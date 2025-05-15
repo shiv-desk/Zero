@@ -16,6 +16,7 @@ import {
   Trash,
   ArrowCircle,
   ScanEye,
+  Sparkles,
 } from '../icons/icons';
 import {
   Dialog,
@@ -247,7 +248,7 @@ export function MailLayout() {
       },
     });
   }, []);
-
+  const { toggleOpen } = useAISidebar();
   const handleToggleAutolabeling = useCallback(() => {
     if (brainState?.enabled) {
       handleDisableBrain();
@@ -282,26 +283,33 @@ export function MailLayout() {
       <div className="rounded-inherit relative z-[5] flex p-0 md:mt-1">
         <ResizablePanelGroup
           direction="horizontal"
-          autoSaveId="mail-panel-layout"
           className="rounded-inherit overflow-hidden"
         >
-          <ResizablePanel
-            defaultSize={40}
+          {!threadId && (<ResizablePanel
+            defaultSize={60}
             minSize={40}
-            maxSize={50}
+            maxSize={60}
             className={`bg-panelLight dark:bg-panelDark w-fit rounded-2xl border border-[#E7E7E7] shadow-sm lg:flex lg:shadow-sm dark:border-[#252525]`}
           >
             <div className="w-full md:h-[calc(100dvh-0.5rem)]">
               <div
                 className={cn(
-                  'sticky top-0 z-[15] flex items-center justify-between gap-1.5 border-b border-[#E7E7E7] p-2 px-[20px] transition-colors md:min-h-14 dark:border-[#252525]',
+                  'sticky top-0 z-[15] flex items-center justify-between gap-1.5 border-b border-[#E7E7E7] p-2 px-4 transition-colors md:min-h-14 dark:border-[#252525]',
                 )}
               >
                 <div className="flex w-full items-center justify-between gap-2">
-                  <div>
-                    <SidebarToggle className="h-fit px-2" />
+                  <div className="flex items-center gap-2">
+                    <SidebarToggle />
+                    {folder === 'inbox' && (
+                    <CategorySelect isMultiSelectMode={mail.bulkSelected.length > 0} />
+                  )}
+                                 
+                         
                   </div>
 
+                  <SearchBar />
+
+                 
                   <div className="flex items-center gap-2">
                     <div>
                       {mail.bulkSelected.length > 0 ? (
@@ -331,7 +339,7 @@ export function MailLayout() {
                       onClick={handleToggleAutolabeling}
                       variant="outline"
                       size={'sm'}
-                      className="text-muted-foreground h-fit min-h-0 px-2 py-1 text-[10px] uppercase"
+                      className="text-muted-foreground h-fit min-h-0 px-2 py-[5px] text-[10px] uppercase"
                     >
                       <div
                         className={cn(
@@ -346,41 +354,49 @@ export function MailLayout() {
                         refetchThreads();
                       }}
                       variant="ghost"
-                      className="md:h-fit md:px-2"
+                      className="h-7 w-7 px-0 dark:bg-[#2C2C2C]"
                     >
-                      <RefreshCcw className="text-muted-foreground h-4 w-4 cursor-pointer" />
+                      <RefreshCcw className="text-muted-foreground cursor-pointer" />
+                    </Button>
+                    <Button
+                      onClick={() => {
+
+                        toggleOpen();
+                      }}
+                      variant="ghost"
+                      className="h-7 w-7 px-0 dark:bg-[#2C2C2C]"
+                    >
+                      <Sparkles className="fill-muted-foreground cursor-pointer " />
                     </Button>
                   </div>
                 </div>
               </div>
-              <div className="p-2 px-[22px]">
-                <SearchBar />
-                <div className="mt-2">
-                  {folder === 'inbox' && (
-                    <CategorySelect isMultiSelectMode={mail.bulkSelected.length > 0} />
-                  )}
-                </div>
-              </div>
+              
               <div
                 className={cn(
-                  `${category[0] === 'Important' ? 'bg-[#F59E0D]' : category[0] === 'All Mail' ? 'bg-[#006FFE]' : category[0] === 'Personal' ? 'bg-[#39ae4a]' : category[0] === 'Updates' ? 'bg-[#8B5CF6]' : category[0] === 'Promotions' ? 'bg-[#F43F5E]' : category[0] === 'Unread' ? 'bg-[#FF4800]' : 'bg-[#F59E0D]'}`,
+                  `${category[0] === 'Important' ? 'bg-[#8B5CF6]' : category[0] === 'Other' ? 'bg-[#006FFE]' : category[0] === 'Personal' ? 'bg-[#39ae4a]' : category[0] === 'Updates' ? 'bg-[#8B5CF6]' : category[0] === 'Promotions' ? 'bg-[#F43F5E]' : category[0] === 'Unread' ? 'bg-[#FF4800]' : 'bg-[#8B5CF6]'}`,
                   'relative bottom-0.5 z-[5] h-0.5 w-full transition-opacity',
                   isFetching ? 'opacity-100' : 'opacity-0',
                 )}
               />
-              <div className="relative z-[1] h-[calc(100dvh-(2px+88px+49px+2px))] overflow-hidden pt-0 md:h-[calc(100dvh-9.8rem)]">
+              <div className="relative z-[1] h-[calc(100dvh-(40px))] overflow-hidden pt-0 md:h-[calc(100dvh-4.5rem)]">
                 <MailList isCompact={true} />
               </div>
             </div>
-          </ResizablePanel>
-          <ResizableHandle className="mr-0.5 opacity-0" />
-          {isDesktop && (
+          </ResizablePanel>)}
+
+          {!threadId && (
+            <ResizableHandle className="mr-0.5 opacity-0" />
+          )}
+
+          {isDesktop && threadId && (
             <ResizablePanel
-              className={`bg-panelLight dark:bg-panelDark mr-0.5 w-fit rounded-2xl border border-[#E7E7E7] shadow-sm lg:flex lg:shadow-sm dark:border-[#252525]`}
-              defaultSize={30}
+              className={`bg-panelLight dark:bg-panelDark mr-[3px] w-fit rounded-2xl border border-[#E7E7E7] shadow-sm lg:flex lg:shadow-sm dark:border-[#252525]`}
+              defaultSize={40}
               minSize={30}
+              maxSize={60}
             >
-              <div className="relative h-[calc(100vh-(10px))] flex-1 lg:h-[calc(100vh-(12px+14px))]">
+              <div className="relative h-[calc(100vh-(8px))] flex-1 lg:h-[calc(100vh-8px)]">
                 <ThreadDisplay />
               </div>
             </ResizablePanel>
@@ -670,18 +686,7 @@ export const Categories = () => {
         />
       ),
     },
-    {
-      id: 'All Mail',
-      name: 'All Mail',
-      searchValue: 'NOT is:draft (is:inbox OR (is:sent AND to:me))',
-      icon: (
-        <Mail
-          className={cn('fill-[#6D6D6D] dark:fill-white', category === 'All Mail' && 'fill-white')}
-        />
-      ),
-      colors:
-        'border-0 bg-[#006FFE] text-white dark:bg-[#006FFE] dark:text-white dark:hover:bg-[#006FFE]/90',
-    },
+    
     {
       id: 'Personal',
       name: t('common.mailCategories.personal'),
@@ -693,41 +698,53 @@ export const Categories = () => {
       ),
     },
     {
-      id: 'Updates',
-      name: t('common.mailCategories.updates'),
-      searchValue: 'is:updates NOT is:sent NOT is:draft',
+      id: 'Other',
+      name: 'Other',
+      searchValue: 'NOT is:draft NOT is:important NOT is:personal (is:inbox OR (is:sent AND to:me))',
       icon: (
-        <Bell
-          className={cn('fill-[#6D6D6D] dark:fill-white', category === 'Updates' && 'fill-white')}
+        <Mail
+          className={cn('fill-[#6D6D6D] dark:fill-white', category === 'Other' && 'fill-white')}
         />
       ),
+      colors:
+        'border-0 bg-[#006FFE] text-white dark:bg-[#006FFE] dark:text-white dark:hover:bg-[#006FFE]/90',
     },
-    {
-      id: 'Promotions',
-      name: 'Promotions',
-      searchValue: 'is:promotions NOT is:sent NOT is:draft',
-      icon: (
-        <Tag
-          className={cn(
-            'fill-[#6D6D6D] dark:fill-white',
-            category === 'Promotions' && 'fill-white',
-          )}
-        />
-      ),
-    },
-    {
-      id: 'Unread',
-      name: 'Unread',
-      searchValue: 'is:unread NOT is:sent NOT is:draft',
-      icon: (
-        <ScanEye
-          className={cn(
-            'h-4 w-4 fill-[#6D6D6D] dark:fill-white',
-            category === 'Unread' && 'fill-white',
-          )}
-        />
-      ),
-    },
+    // {
+    //   id: 'Updates',
+    //   name: t('common.mailCategories.updates'),
+    //   searchValue: 'is:updates NOT is:sent NOT is:draft',
+    //   icon: (
+    //     <Bell
+    //       className={cn('fill-[#6D6D6D] dark:fill-white', category === 'Updates' && 'fill-white')}
+    //     />
+    //   ),
+    // },
+    // {
+    //   id: 'Promotions',
+    //   name: 'Promotions',
+    //   searchValue: 'is:promotions NOT is:sent NOT is:draft',
+    //   icon: (
+    //     <Tag
+    //       className={cn(
+    //         'fill-[#6D6D6D] dark:fill-white',
+    //         category === 'Promotions' && 'fill-white',
+    //       )}
+    //     />
+    //   ),
+    // },
+    // {
+    //   id: 'Unread',
+    //   name: 'Unread',
+    //   searchValue: 'is:unread NOT is:sent NOT is:draft',
+    //   icon: (
+    //     <ScanEye
+    //       className={cn(
+    //         'h-4 w-4 fill-[#6D6D6D] dark:fill-white',
+    //         category === 'Unread' && 'fill-white',
+    //       )}
+    //     />
+    //   ),
+    // },
   ];
 };
 
@@ -737,10 +754,10 @@ function getCategoryColor(categoryId: string): string {
   switch (categoryId.toLowerCase()) {
     case 'primary':
       return 'bg-[#006FFE]';
-    case 'all mail':
+    case 'other':
       return 'bg-[#006FFE]';
     case 'important':
-      return 'bg-[#F59E0D]';
+      return 'bg-[#8B5CF6]';
     case 'promotions':
       return 'bg-[#F43F5E]';
     case 'personal':
@@ -757,14 +774,13 @@ function getCategoryColor(categoryId: string): string {
 function CategorySelect({ isMultiSelectMode }: { isMultiSelectMode: boolean }) {
   const [mail, setMail] = useMail();
   const [searchValue, setSearchValue] = useSearchValue();
+  const { toggleOpen } = useAISidebar();
   const categories = Categories();
   const params = useParams<{ folder: string }>();
   const folder = params?.folder ?? 'inbox';
   const [category, setCategory] = useQueryState('category', {
     defaultValue: 'Important',
   });
-  const containerRef = useRef<HTMLDivElement>(null);
-  const activeTabElementRef = useRef<HTMLButtonElement>(null);
 
   // Only show category selection for inbox folder
   if (folder !== 'inbox') return <div className="h-8"></div>;
@@ -773,86 +789,46 @@ function CategorySelect({ isMultiSelectMode }: { isMultiSelectMode: boolean }) {
   const primaryCategory = categories[0];
   if (!primaryCategory) return null;
 
-  const renderCategoryButton = (cat: CategoryType, isOverlay = false, idx?: number) => {
-    const isSelected = cat.id === (category || 'Primary');
-    const bgColor = getCategoryColor(cat.id);
-
-    return (
-      <Tooltip key={cat.id}>
-        <TooltipTrigger asChild>
-          <button
-            ref={!isOverlay ? activeTabElementRef : null}
-            onClick={() => {
-              setCategory(cat.id);
-              setSearchValue({
-                value: `${cat.searchValue} ${cleanSearchValue(searchValue.value).trim().length ? `AND ${cleanSearchValue(searchValue.value)}` : ''}`,
-                highlight: searchValue.highlight,
-                folder: '',
-              });
-            }}
-            className={cn(
-              'flex h-8 items-center justify-center gap-1 overflow-hidden rounded-md border transition-all duration-300 ease-out dark:border-none',
-              isSelected
-                ? cn('flex-1 border-none px-3 text-white', bgColor)
-                : 'w-8 bg-white hover:bg-gray-100 dark:bg-[#313131] dark:hover:bg-[#313131]/80',
-            )}
-            tabIndex={isOverlay ? -1 : undefined}
-          >
-            <div className="relative overflow-visible">{cat.icon}</div>
-            {isSelected && (
-              <div className="flex items-center justify-center gap-2.5 px-0.5">
-                <div className="animate-in fade-in-0 slide-in-from-right-4 justify-start text-sm leading-none text-white duration-300">
-                  {cat.name}
-                </div>
-              </div>
-            )}
-          </button>
-        </TooltipTrigger>
-        {!isSelected && (
-          <TooltipContent side="top" className={`${idx === 0 ? 'ml-4' : ''}`}>
-            <span>{cat.name}</span>
-          </TooltipContent>
-        )}
-      </Tooltip>
-    );
-  };
-
-  // Update clip path when category changes
-  useEffect(() => {
-    const container = containerRef.current;
-    const activeTabElement = activeTabElementRef.current;
-
-    if (category && container && activeTabElement) {
-      setMail({ ...mail, bulkSelected: [] });
-      const { offsetLeft, offsetWidth } = activeTabElement;
-      const clipLeft = Math.max(0, offsetLeft - 2);
-      const clipRight = Math.min(container.offsetWidth, offsetLeft + offsetWidth + 2);
-      const containerWidth = container.offsetWidth;
-
-      if (containerWidth) {
-        container.style.clipPath = `inset(0 ${Number(100 - (clipRight / containerWidth) * 100).toFixed(2)}% 0 ${Number((clipLeft / containerWidth) * 100).toFixed(2)}%)`;
-      }
-    }
-  }, [category]);
-
   if (isMultiSelectMode) {
     return <BulkSelectActions />;
   }
 
   return (
-    <div className="relative w-full">
-      <div className="flex w-full items-start justify-start gap-2">
-        {categories.map((cat, idx) => renderCategoryButton(cat, false, idx))}
-      </div>
+    <div className="relative w-full dark:bg-[#0F0F0F] rounded-lg h-7">
+      <div className="flex w-full items-start justify-start gap-0.5">
+        {categories.map((cat, idx) => {
+          const isSelected = cat.id === (category || 'Primary');
+          const bgColor = getCategoryColor(cat.id);
 
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-10 overflow-hidden transition-[clip-path] duration-300 ease-in-out"
-        ref={containerRef}
-      >
-        <div className="flex w-full items-start justify-start gap-2">
-          {categories.map((cat, idx) => renderCategoryButton(cat, true, idx))}
-        </div>
+          return (
+            <Tooltip key={cat.id}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => {
+                    setCategory(cat.id);
+                    setSearchValue({
+                      value: cat.searchValue,
+                      highlight: '',
+                      folder: '',
+                    });
+                    setMail({ ...mail, bulkSelected: [] });
+                  }}
+                  className={cn(
+                    'flex h-7 w-7 items-center justify-center gap-1 overflow-hidden rounded-md border transition-colors dark:border-none',
+                    isSelected
+                      ? cn('flex-1 border-none text-white', bgColor)
+                      : 'w-7 h-7'
+                  )}
+                >
+                  <div className="relative overflow-visible">{cat.icon}</div>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                  <span>{cat.name}</span>
+                </TooltipContent>
+            </Tooltip>
+          );
+        })}
       </div>
     </div>
   );

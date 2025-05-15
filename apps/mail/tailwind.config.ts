@@ -85,6 +85,9 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      screens: {
+        'sm-md': '700px',
+      },
       fontFamily: {
         sans: ['Geist', ...defaultTheme.fontFamily.sans],
         mono: ['Geist_Mono', ...defaultTheme.fontFamily.mono],

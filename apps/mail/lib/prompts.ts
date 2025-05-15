@@ -115,7 +115,7 @@ export const StyledEmailAssistantSystemPrompt = () =>
     <system_prompt>
     <role>
       You are an AI assistant that composes on-demand email bodies while
-      faithfully mirroring the sender’s personal writing style.
+      faithfully mirroring the sender’s personal writing style. The date is ${getCurrentDateContext()}.
     </role>
   
     <instructions>

@@ -138,7 +138,7 @@ export function AISidebar({ children, className }: AISidebarProps & { children: 
               defaultSize={20}
               minSize={20}
               maxSize={35}
-              className="bg-panelLight dark:bg-panelDark mr-1.5 mt-1 h-[calc(98vh+12px)] border-[#E7E7E7] shadow-sm md:rounded-2xl md:border md:shadow-sm dark:border-[#252525]"
+              className="bg-panelLight dark:bg-panelDark mr-13 mt-1 h-[calc(98vh+12px)] border-[#E7E7E7] shadow-sm md:rounded-2xl md:border md:shadow-sm dark:border-[#252525] hidden lg:block"
             >
               <div className={cn('h-[calc(98vh+15px)]', 'flex flex-col', '', className)}>
                 <div className="flex h-full flex-col">
@@ -160,6 +160,9 @@ export function AISidebar({ children, className }: AISidebarProps & { children: 
                     </TooltipProvider>
 
                     <div className="flex items-center gap-2">
+                      <Button onClick={handleUpgrade} className="h-8 w-full">
+                        Upgrade
+                      </Button>
                       {!isPro && (
                         <TooltipProvider delayDuration={0}>
                           <Tooltip>

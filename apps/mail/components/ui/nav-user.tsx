@@ -306,7 +306,7 @@ export function NavUser() {
                     <a href="/terms" className="hover:underline">
                       Terms
                     </a>
-                  </div>
+        r          </div>
                 </>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -346,7 +346,7 @@ export function NavUser() {
                   </div>
                 </div>
               ) : (
-                <Danger />
+                <></>
               )}
               {otherConnections.slice(0, 2).map((connection) => (
                 <Tooltip key={connection.id}>

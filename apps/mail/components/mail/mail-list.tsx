@@ -3,6 +3,7 @@
 import {
   Archive2,
   Bell,
+  Check,
   ChevronDown,
   GroupPeople,
   Lightning,
@@ -32,11 +33,11 @@ import {
 import type { ConditionalThreadProps, MailListProps, MailSelectMode, ParsedMessage } from '@/types';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { moveThreadsTo, type ThreadDestination } from '@/lib/thread-actions';
-import { Briefcase, Check, Star, StickyNote, Users } from 'lucide-react';
 import { ThreadContextMenu } from '@/components/context/thread-context';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { useMail, type Config } from '@/components/mail/use-mail';
+import { Briefcase, Star, StickyNote, Users } from 'lucide-react';
 import { useMailNavigation } from '@/hooks/use-mail-navigation';
 import { focusedIndexAtom } from '@/hooks/use-mail-navigation';
 import { backgroundQueueAtom } from '@/store/backgroundQueue';
@@ -293,17 +294,15 @@ const Thread = memo(
       }
     }, [semanticSearchQuery]);
 
-    const [mailState, setMail] = useMail();
+    const [mail, setMail] = useMail();
 
     const isMailSelected = useMemo(() => {
       if (!threadId || !latestMessage) return false;
       const _threadId = latestMessage.threadId ?? message.id;
-      return _threadId === threadId || threadId === mailState.selected;
-    }, [threadId, message.id, latestMessage, mailState.selected]);
+      return _threadId === threadId || threadId === mail.selected;
+    }, [threadId, message.id, latestMessage, mail.selected]);
 
-    const isMailBulkSelected = mailState.bulkSelected.includes(
-      latestMessage?.threadId ?? message.id,
-    );
+    const isMailBulkSelected = mail.bulkSelected.includes(latestMessage?.threadId ?? message.id);
 
     const isFolderInbox = folder === FOLDERS.INBOX || !folder;
     const isFolderSpam = folder === FOLDERS.SPAM;
@@ -429,210 +428,149 @@ const Thread = memo(
             data-thread-id={latestMessage.threadId ?? latestMessage.id}
             key={latestMessage.threadId ?? latestMessage.id}
             className={cn(
-              'hover:bg-offsetLight hover:bg-primary/5 group relative mx-1 flex cursor-pointer flex-col items-start rounded-lg border-transparent py-2 text-left text-sm transition-all hover:opacity-100',
+              'hover:bg-offsetLight hover:bg-primary/5 relative mx-2 flex cursor-pointer flex-col items-start rounded-lg border-transparent py-2 text-left text-sm transition-all',
               (isMailSelected || isMailBulkSelected || isKeyboardFocused) &&
-                'border-border bg-primary/5 opacity-100',
+                'border-border bg-primary/5',
               isKeyboardFocused && 'ring-primary/50',
               'relative',
-              'group',
             )}
           >
-            <div
-              className={cn(
-                'absolute right-2 z-[25] flex -translate-y-1/2 items-center gap-1 rounded-xl border bg-white p-1 opacity-0 shadow-sm group-hover:opacity-100 dark:bg-[#1A1A1A]',
-                index === 0 ? 'top-4' : 'top-[-1]',
-              )}
-            >
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 overflow-visible [&_svg]:size-3.5"
-                    onClick={handleToggleStar}
-                  >
-                    <Star2
-                      className={cn(
-                        'h-4 w-4',
-                        isStarred
-                          ? 'fill-yellow-400 stroke-yellow-400'
-                          : 'fill-transparent stroke-[#9D9D9D] dark:stroke-[#9D9D9D]',
-                      )}
-                    />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="mb-1 bg-white dark:bg-[#1A1A1A]">
-                  {isStarred ? t('common.threadDisplay.unstar') : t('common.threadDisplay.star')}
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 [&_svg]:size-3.5"
-                    onClick={(e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      moveThreadTo('archive');
-                    }}
-                  >
-                    <Archive2 className="fill-[#9D9D9D]" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="mb-1 bg-white dark:bg-[#1A1A1A]">
-                  {t('common.threadDisplay.archive')}
-                </TooltipContent>
-              </Tooltip>
-              {!isFolderBin ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 hover:bg-[#FDE4E9] dark:hover:bg-[#411D23] [&_svg]:size-3.5"
-                      onClick={(e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        moveThreadTo('bin');
-                      }}
-                    >
-                      <Trash className="fill-[#F43F5E]" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="mb-1 bg-white dark:bg-[#1A1A1A]">
-                    {t('common.actions.Bin')}
-                  </TooltipContent>
-                </Tooltip>
-              ) : null}
-            </div>
-
-            <div className="flex w-full items-center justify-between gap-4 px-4">
-              <div>
-                <Avatar className="h-8 w-8 rounded-full border dark:border-none">
-                  <div
-                    className={cn(
-                      'flex h-full w-full items-center justify-center rounded-full bg-blue-500 p-2 dark:bg-blue-500',
-                      {
-                        hidden: !isMailBulkSelected,
-                      },
-                    )}
-                    onClick={(e: React.MouseEvent) => {
-                      e.stopPropagation();
-                      const threadId = latestMessage.threadId ?? message.id;
-                      setMail((prev: Config) => ({
-                        ...prev,
-                        bulkSelected: prev.bulkSelected.filter((id: string) => id !== threadId),
-                      }));
-                    }}
-                  >
-                    <Check className="h-4 w-4 text-white" />
-                  </div>
-                  {isGroupThread ? (
-                    <div className="flex h-full w-full items-center justify-center rounded-full bg-[#FFFFFF] p-2 dark:bg-[#373737]">
-                      <GroupPeople className="h-4 w-4" />
-                    </div>
-                  ) : (
-                    <>
-                      <AvatarImage
-                        className="rounded-full bg-[#FFFFFF] dark:bg-[#373737]"
-                        src={getEmailLogo(latestMessage.sender.email)}
-                      />
-                      <AvatarFallback className="rounded-full bg-[#FFFFFF] font-bold text-[#9F9F9F] dark:bg-[#373737]">
-                        {cleanName[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </>
+            <div className="hidden w-full items-center justify-between gap-4 px-4 pl-5 md:flex">
+              <div
+                className={cn(
+                  'relative flex w-full items-center',
+                  getThreadData.hasUnread || mail.bulkSelected.length > 0
+                    ? 'opacity-100'
+                    : 'opacity-70',
+                )}
+              >
+                <div
+                  className={cn(
+                    'top-[-3px] -ml-3 mr-[11px] flex h-[13px] w-[13px] items-center justify-center rounded border-2 border-[#484848] transition-colors',
+                    isMailBulkSelected && 'border-none bg-[#3B82F6]',
+                    mail.bulkSelected.length === 0 && 'hidden',
                   )}
-                </Avatar>
-                <div className="z-1 relative">
-                  {getThreadData.hasUnread && !isMailSelected && !isFolderSent && !isFolderBin ? (
-                    <span className="absolute -bottom-[1px] right-0.5 size-2 rounded bg-[#006FFE]" />
-                  ) : null}
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    const threadId = latestMessage.threadId ?? message.id;
+                    setMail((prev: Config) => ({
+                      ...prev,
+                      bulkSelected: isMailBulkSelected
+                        ? prev.bulkSelected.filter((id: string) => id !== threadId)
+                        : [...prev.bulkSelected, threadId],
+                    }));
+                  }}
+                >
+                  {isMailBulkSelected && (
+                    <Check className="relative top-[0.5px] h-2 w-2 text-white dark:fill-[#141414]" />
+                  )}
                 </div>
-              </div>
-
-              <div className="flex w-full justify-between">
-                <div className="w-full">
-                  <div className="flex w-full flex-row items-center justify-between">
-                    <div className="flex flex-row items-center gap-[4px]">
+                {/* Status Indicator */}
+                <div className={cn('mr-3 flex-shrink-0', mail.bulkSelected.length > 0 && 'mr-0')}>
+                  <div className="relative">
+                    {getThreadData.hasUnread &&
+                    !isMailSelected &&
+                    !isFolderSent &&
+                    !isFolderBin &&
+                    mail.bulkSelected.length === 0 &&
+                    !isMailBulkSelected ? (
+                      <span className="absolute right-0.5 top-[-3px] size-2 rounded bg-[#006FFE]" />
+                    ) : (
                       <span
                         className={cn(
-                          getThreadData.hasUnread && !isMailSelected ? 'font-bold' : 'font-medium',
-                          'text-md flex items-baseline gap-1 group-hover:opacity-100',
+                          `absolute right-0.5 top-[-3px] size-2 rounded bg-black/40 dark:bg-[#2C2C2C]`,
+                          mail.bulkSelected.length > 0 && 'hidden',
                         )}
-                      >
-                        {isFolderSent ? (
-                          <span className={cn('truncate text-sm md:max-w-[15ch] xl:max-w-[25ch]')}>
-                            {highlightText(latestMessage.subject, searchValue.highlight)}
-                          </span>
-                        ) : (
-                          <span className={cn('truncate text-sm md:max-w-[15ch] xl:max-w-[25ch]')}>
-                            {highlightText(
-                              cleanNameDisplay(latestMessage.sender.name) || '',
-                              searchValue.highlight,
-                            )}
-                          </span>
-                        )}{' '}
-                        {!isFolderSent ? (
-                          <span className="flex items-center space-x-2">
-                            <RenderLabels labels={threadLabels} />
-                          </span>
-                        ) : null}
-                      </span>
-                      {getThreadData.totalReplies > 1 ? (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="rounded-md text-xs opacity-70">
-                              [{getThreadData.totalReplies}]
-                            </span>
-                          </TooltipTrigger>
-                          <TooltipContent className="p-1 text-xs">
-                            {t('common.mail.replies', { count: getThreadData.totalReplies })}
-                          </TooltipContent>
-                        </Tooltip>
-                      ) : null}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Sender Name/Subject */}
+                <div className="flex w-full items-center justify-between ">
+                  <div className="flex items-center ">
+                    <div className="flex w-[80px] max-w-[80px] flex-shrink-0 items-center lg:w-[150px] lg:max-w-[150px]">
+                      {isFolderSent ? (
+                        <span className="line-clamp-1 text-sm">
+                          {highlightText(latestMessage.subject, searchValue.highlight)}
+                        </span>
+                      ) : (
+                        <span className="line-clamp-1 min-w-0 text-sm font-medium">
+                          {highlightText(
+                            cleanNameDisplay(latestMessage.sender.name) || '',
+                            searchValue.highlight,
+                          )}
+                        </span>
+                      )}
+                      <div className="flex-shrink-0">
+                        {getThreadData.labels ? <MailLabels labels={getThreadData.labels} /> : null}
+                      </div>
                     </div>
-                    {latestMessage.receivedOn ? (
-                      <p
-                        className={cn(
-                          'text-nowrap text-xs font-normal text-[#6D6D6D] opacity-70 transition-opacity group-hover:opacity-100 dark:text-[#8C8C8C]',
-                          isMailSelected && 'opacity-100',
+
+                    {/* Avatar */}
+                    <div className="mx-4 hidden flex-shrink-0 md:block">
+                      <Avatar className="h-5 w-5 rounded border dark:border-none">
+                        {isGroupThread ? (
+                          <div className="flex h-full w-full items-center justify-center rounded bg-[#FFFFFF] dark:bg-[#373737]">
+                            <GroupPeople className="h-3 w-3" />
+                          </div>
+                        ) : (
+                          <>
+                            <AvatarImage
+                              className="rounded bg-[#FFFFFF] dark:bg-[#373737]"
+                              src={getEmailLogo(latestMessage.sender.email)}
+                            />
+                            <AvatarFallback className="rounded bg-[#FFFFFF] text-xs font-bold text-[#9F9F9F] dark:bg-[#373737]">
+                              {cleanName[0]?.toUpperCase()}
+                            </AvatarFallback>
+                          </>
                         )}
-                      >
+                      </Avatar>
+                    </div>
+                    {/* Divider */}
+                    <div className="mx-4 h-4 w-[0.1px] flex-shrink-0 bg-black/20 dark:bg-[#2C2C2C]" />
+                    {/* Subject */}
+                    <div className="w-[200px] flex-shrink-0 md:max-w-[350px] lg:max-w-[400px] xl:w-[330px]">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center min-w-0 flex-1">
+                          {!isFolderSent && threadLabels && threadLabels.length >= 1 ? (
+                            <span className="mr-2 flex items-center space-x-2 flex-shrink-0">
+                              <RenderLabels labels={threadLabels} />
+                            </span>
+                          ) : null}
+                          <p className="truncate text-sm text-black dark:text-white">
+                            {highlightText(latestMessage.subject, searchValue.highlight)}
+                          </p>
+                        </div>
+                        {getThreadData.totalReplies > 1 && (
+                          <span className="text-xs text-[#6D6D6D] dark:text-[#8C8C8C] flex-shrink-0 w-[8px] text-right">
+                            {getThreadData.totalReplies}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Divider */}
+                  <div className="mx-4 hidden h-4 w-[0.1px] flex-shrink-0 bg-black/20 md:block dark:bg-[#2C2C2C]" />
+
+                  {/* Message Title */}
+                  <div className="hidden w-[50px] min-w-[50px] flex-1 md:block">
+                  <p className="line-clamp-1 text-sm text-[#8C8C8C]">
+                    {stripImagesKeepText(latestMessage.title) || ''}
+                  </p>
+                </div>
+
+                  <div className="mx-4  h-4 w-[0.1px] flex-shrink-0 bg-black/20 hidden md:block dark:bg-[#2C2C2C]" />
+
+                  {/* Date */}
+                  <div className="flex-shrink-0 w-10">
+                    {latestMessage.receivedOn && (
+                      <p className="text-nowrap text-xs font-normal text-[#6D6D6D] dark:text-[#8C8C8C]">
                         {formatDate(latestMessage.receivedOn.split('.')[0] || '')}
                       </p>
-                    ) : null}
-                  </div>
-                  <div className="flex justify-between">
-                    {isFolderSent ? (
-                      <p
-                        className={cn(
-                          'mt-1 line-clamp-1 max-w-[50ch] text-sm text-[#8C8C8C] md:max-w-[25ch]',
-                        )}
-                      >
-                        {latestMessage.to.map((e) => e.email).join(', ')}
-                      </p>
-                    ) : (
-                      <p
-                        className={cn(
-                          'mt-1 line-clamp-1 w-full text-sm text-[#8C8C8C] min-w-0',
-                        )}
-                      >
-                        {highlightText(latestMessage.subject, searchValue.highlight)}
-                      </p>
                     )}
-                    {getThreadData.labels ? <MailLabels labels={getThreadData.labels} /> : null}
                   </div>
-                  {emailContent && (
-                    <div className="text-muted-foreground mt-2 line-clamp-2 text-xs">
-                      {highlightText(emailContent, searchValue.highlight)}
-                    </div>
-                  )}
-                  {mainSearchTerm && (
-                    <div className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
-                      <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5">
-                        {mainSearchTerm}
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -959,69 +897,101 @@ export const MailLabels = memo(
 
     if (!labels?.length) return null;
 
-    const visibleLabels = labels.filter(
-      (label) => !['unread', 'inbox'].includes(label.name.toLowerCase()),
-    );
+    const visibleLabels = labels
+      .filter((label) => !['unread', 'inbox'].includes(label.name.toLowerCase()))
+      .slice(0, 2); // Only take first two labels
 
     if (!visibleLabels.length) return null;
 
     return (
       <div className={cn('flex select-none items-center')}>
-        {visibleLabels.map((label) => {
-          const style = getDefaultBadgeStyle(label.name);
-          if (label.name.toLowerCase() === 'notes') {
+        {/* First label slot */}
+        {visibleLabels.length > 0 &&
+          visibleLabels[0] &&
+          (() => {
+            const label = visibleLabels[0];
+            if (label.name.toLowerCase() === 'notes') {
+              return (
+                <Tooltip key={label.id}>
+                  <TooltipTrigger asChild>
+                    <Badge className="rounded-md bg-amber-100 p-1 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400">
+                      {getLabelIcon(label.name)}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="hidden py-0 text-xs">
+                    {t('common.notes.title')}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            const style = getDefaultBadgeStyle(label.name);
+            if (style === 'secondary') return null;
+
+            const normalizedLabel = getNormalizedLabelKey(label.name);
+            let labelContent;
+            switch (normalizedLabel) {
+              case 'primary':
+                labelContent = t('common.mailCategories.primary');
+                break;
+              case 'important':
+                labelContent = t('common.mailCategories.important');
+                break;
+              case 'personal':
+                labelContent = t('common.mailCategories.personal');
+                break;
+              case 'updates':
+                labelContent = t('common.mailCategories.updates');
+                break;
+              case 'promotions':
+                labelContent = t('common.mailCategories.promotions');
+                break;
+              case 'social':
+                labelContent = t('common.mailCategories.social');
+                break;
+              case 'starred':
+                labelContent = 'Starred';
+                break;
+              default:
+                labelContent = capitalize(normalizedLabel);
+            }
+
             return (
-              <Tooltip key={label.id}>
-                <TooltipTrigger asChild>
-                  <Badge className="rounded-md bg-amber-100 p-1 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400">
-                    {getLabelIcon(label.name)}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent className="hidden px-1 py-0 text-xs">
-                  {t('common.notes.title')}
-                </TooltipContent>
-              </Tooltip>
+              <Badge key={label.id} className="rounded-md p-1" variant={style}>
+                {getLabelIcon(label.name)}
+              </Badge>
             );
+          })()}
+
+        {/* Second label slot - either show second label or empty placeholder */}
+        {(() => {
+          if (visibleLabels.length > 1 && visibleLabels[1]) {
+            const label = visibleLabels[1];
+            if (label.name.toLowerCase() === 'notes') {
+              return (
+                <Tooltip key={label.id}>
+                  <TooltipTrigger asChild>
+                    <Badge className="rounded-md bg-amber-100 p-1 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-400">
+                      {getLabelIcon(label.name)}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent className="hidden px-1 py-0 text-xs">
+                    {t('common.notes.title')}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+
+            const style = getDefaultBadgeStyle(label.name);
+            if (style !== 'secondary') {
+              return (
+                <Badge key={label.id} className="rounded-md p-0" variant={style}>
+                  {getLabelIcon(label.name)}
+                </Badge>
+              );
+            }
           }
-
-          // Skip rendering if style is "secondary" (default case)
-          if (style === 'secondary') return null;
-
-          const normalizedLabel = getNormalizedLabelKey(label.name);
-
-          let labelContent;
-          switch (normalizedLabel) {
-            case 'primary':
-              labelContent = t('common.mailCategories.primary');
-              break;
-            case 'important':
-              labelContent = t('common.mailCategories.important');
-              break;
-            case 'personal':
-              labelContent = t('common.mailCategories.personal');
-              break;
-            case 'updates':
-              labelContent = t('common.mailCategories.updates');
-              break;
-            case 'promotions':
-              labelContent = t('common.mailCategories.promotions');
-              break;
-            case 'social':
-              labelContent = t('common.mailCategories.social');
-              break;
-            case 'starred':
-              labelContent = 'Starred';
-              break;
-            default:
-              labelContent = capitalize(normalizedLabel);
-          }
-
-          return (
-            <Badge key={label.id} className="rounded-md p-1" variant={style}>
-              {getLabelIcon(label.name)}
-            </Badge>
-          );
-        })}
+        })()}
       </div>
     );
   },
@@ -1043,20 +1013,20 @@ function getLabelIcon(label: string) {
   const normalizedLabel = label.toLowerCase().replace(/^category_/i, '');
 
   switch (normalizedLabel) {
-    case 'important':
-      return <Lightning className="h-3.5 w-3.5 fill-[#F59E0D]" />;
-    case 'promotions':
-      return <Tag className="h-3.5 w-3.5 fill-[#F43F5E]" />;
-    case 'personal':
-      return <User className="h-3.5 w-3.5 fill-[#39AE4A]" />;
-    case 'updates':
-      return <Bell className="h-3.5 w-3.5 fill-[#8B5CF6]" />;
-    case 'work':
-      return <Briefcase className="h-3.5 w-3.5" />;
-    case 'forums':
-      return <People className="h-3.5 w-3.5 fill-blue-500" />;
-    case 'notes':
-      return <StickyNote className="h-3.5 w-3.5" />;
+    // case 'important':
+    //   return <Lightning className="h-3.5 w-3.5 fill-[#F59E0D]" />;
+    // case 'promotions':
+    //   return <Tag className="h-3.5 w-3.5 fill-[#F43F5E]" />;
+    // case 'personal':
+    //   return <User className="h-3.5 w-3.5 fill-[#39AE4A]" />;
+    // case 'updates':
+    //   return <Bell className="h-3.5 w-3.5 fill-[#8B5CF6]" />;
+    // case 'work':
+    //   return <Briefcase className="h-3.5 w-3.5" />;
+    // case 'forums':
+    //   return <People className="h-3 w-3 fill-blue-500" />;
+    // case 'notes':
+    //   return <StickyNote className="h-3.5 w-3.5" />;
     case 'starred':
       return <Star className="h-3.5 w-3.5 fill-yellow-400 stroke-yellow-400" />;
     default:
@@ -1093,4 +1063,22 @@ const cleanNameDisplay = (name?: string) => {
   if (!name) return '';
   const match = name.match(/^[^a-zA-Z0-9.]*(.*?)[^a-zA-Z0-9.]*$/);
   return match ? match[1] : name;
+};
+
+// Helper function to strip images and keep only text
+const stripImagesKeepText = (content?: string) => {
+  if (!content) return null;
+
+  // Remove error messages, image tags, and HTML
+  const strippedContent = content
+    .replace(/ERROR/g, '')
+    .replace(/<img[^>]*>/g, '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\b(undefined|null)\b/g, '')
+    .trim();
+
+  // Only return content if it has meaningful text (at least 2 characters, not just numbers or special chars)
+  return strippedContent.length >= 2 && /[a-zA-Z]{2,}/.test(strippedContent)
+    ? strippedContent
+    : null;
 };
