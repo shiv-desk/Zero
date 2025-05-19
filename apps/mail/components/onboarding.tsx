@@ -147,23 +147,28 @@ export function OnboardingDialog({
   );
 }
 
+import { useOnboardingCheck } from '@/hooks/use-onboarding-check';
+
 export function OnboardingWrapper() {
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const { hasCompletedOnboarding, isLoading, markOnboardingCompleted } = useOnboardingCheck();
 
   useEffect(() => {
-    // Check if the user has already gone through onboarding
-    const hasCompletedOnboarding = localStorage.getItem('hasCompletedOnboarding') === 'true';
-    
-    // Only show onboarding if the user hasn't completed it yet
-    if (!hasCompletedOnboarding) {
+    // Only show onboarding if we're absolutely sure the user hasn't completed it yet
+    // We need to have finished loading AND explicitly have hasCompletedOnboarding === false
+    if (!isLoading && hasCompletedOnboarding === false) {
       setShowOnboarding(true);
+    } else if (!isLoading) {
+      // If we've finished loading and hasCompletedOnboarding is not explicitly false,
+      // make sure the dialog is hidden
+      setShowOnboarding(false);
     }
-  }, []);
+  }, [hasCompletedOnboarding, isLoading]);
 
   const handleOpenChange = (open: boolean) => {
-    // If the dialog is being closed, mark onboarding as completed
+    // If the dialog is being closed, mark onboarding as completed on the server
     if (!open) {
-      localStorage.setItem('hasCompletedOnboarding', 'true');
+      markOnboardingCompleted();
     }
     setShowOnboarding(open);
   };

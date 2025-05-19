@@ -190,6 +190,13 @@
       "when": 1747028224904,
       "tag": "0026_smooth_norrin_radd",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1747634381053,
+      "tag": "0027_magical_bug",
+      "breakpoints": true
     }
   ]
 }

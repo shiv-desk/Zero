@@ -22,6 +22,7 @@ export const user = createTable('user', {
   updatedAt: timestamp('updated_at').notNull(),
   defaultConnectionId: text('default_connection_id'),
   customPrompt: text('custom_prompt'),
+  hasCompletedOnboarding: boolean('has_completed_onboarding').notNull().default(false),
 });
 
 export const session = createTable('session', {

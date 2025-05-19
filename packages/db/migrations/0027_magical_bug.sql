@@ -1,0 +1,1 @@
+ALTER TABLE "mail0_user" ADD COLUMN "has_completed_onboarding" boolean DEFAULT false NOT NULL;

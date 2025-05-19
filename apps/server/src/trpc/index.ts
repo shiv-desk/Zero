@@ -13,6 +13,7 @@ import { userRouter } from './routes/user';
 import type { HonoContext } from '../ctx';
 import { aiRouter } from './routes/ai';
 import { router } from './trpc';
+import { onboardingCheckRouter } from './routes/onboarding-check';
 
 export const appRouter = router({
   ai: aiRouter,
@@ -23,6 +24,7 @@ export const appRouter = router({
   labels: labelsRouter,
   mail: mailRouter,
   notes: notesRouter,
+  onboardingCheck: onboardingCheckRouter,
   shortcut: shortcutRouter,
   settings: settingsRouter,
   user: userRouter,
