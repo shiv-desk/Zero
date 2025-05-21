@@ -150,6 +150,7 @@ export enum Tools {
   BulkDelete = 'bulkDelete',
   BulkArchive = 'bulkArchive',
   DeleteLabel = 'deleteLabel',
+  GetContacts = 'getContacts',
 }
 
 export type AppContext = Context<{ Bindings: Env }>;

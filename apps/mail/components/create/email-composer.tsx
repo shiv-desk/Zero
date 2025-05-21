@@ -10,6 +10,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TextEffect } from '@/components/motion-primitives/text-effect';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { useOpenComposeModal } from '@/hooks/use-open-compose-modal';
 import { useActiveConnection } from '@/hooks/use-connections';
 import useComposeEditor from '@/hooks/use-compose-editor';
 import { Loader, Check, X as XIcon } from 'lucide-react';
@@ -94,16 +95,15 @@ export function EmailComposer({
   const [showBcc, setShowBcc] = useState(initialBcc.length > 0);
   const [isLoading, setIsLoading] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [messageLength, setMessageLength] = useState(0);
+  const [_messageLength, setMessageLength] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const toInputRef = useRef<HTMLInputElement>(null);
   const ccInputRef = useRef<HTMLInputElement>(null);
   const bccInputRef = useRef<HTMLInputElement>(null);
   const [threadId] = useQueryState('threadId');
   const [mode] = useQueryState('mode');
-  const [isComposeOpen, setIsComposeOpen] = useQueryState('isComposeOpen');
+  const { isOpen: isComposeOpen, setIsOpen: setIsComposeOpen } = useOpenComposeModal();
   const { data: emailData } = useThread(threadId ?? null);
-  const { data: session } = useSession();
   const [urlDraftId] = useQueryState('draftId');
   const [draftId, setDraftId] = useState<string | null>(urlDraftId ?? null);
   const [aiGeneratedMessage, setAiGeneratedMessage] = useState<string | null>(null);
@@ -146,7 +146,7 @@ export function EmailComposer({
     trpc.ai.generateEmailSubject.mutationOptions(),
   );
   useEffect(() => {
-    if (isComposeOpen === 'true' && toInputRef.current) {
+    if (isComposeOpen && toInputRef.current) {
       toInputRef.current.focus();
     }
   }, [isComposeOpen]);
@@ -165,7 +165,7 @@ export function EmailComposer({
 
   useEffect(() => {
     // Don't populate from threadId if we're in compose mode
-    if (isComposeOpen === 'true') return;
+    if (isComposeOpen) return;
 
     if (!emailData?.latest || !mode || !activeConnection?.email) return;
 
@@ -304,7 +304,7 @@ export function EmailComposer({
       setHasUnsavedChanges(false);
       editor.commands.clearContent(true);
       form.reset();
-      setIsComposeOpen(null);
+      await setIsComposeOpen(false);
     } catch (error) {
       console.error('Error sending email:', error);
       toast.error('Failed to send email');
@@ -594,7 +594,7 @@ export function EmailComposer({
                       ))}
                       {toEmails.length > 3 && (
                         <span className="ml-1 text-center text-[#8C8C8C]">
-                          +{toEmails.length - 3} more
+                          {`+${toEmails.length - 3} more`}
                         </span>
                       )}
                     </div>

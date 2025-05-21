@@ -15,8 +15,8 @@ import { type gmail_v1, gmail } from '@googleapis/gmail';
 import { OAuth2Client } from 'google-auth-library';
 import type { CreateDraftData } from '../schemas';
 import { createMimeMessage } from 'mimetext';
-import { cleanSearchValue } from '../utils';
 import { people } from '@googleapis/people';
+import { cleanSearchValue } from '../utils';
 import { env } from 'cloudflare:workers';
 import * as he from 'he';
 
@@ -40,6 +40,9 @@ export class GoogleMailManager implements MailManager {
       'https://www.googleapis.com/auth/gmail.modify',
       'https://www.googleapis.com/auth/userinfo.profile',
       'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/contacts.readonly',
+      'https://www.googleapis.com/auth/contacts.other.readonly',
+      'https://www.googleapis.com/auth/directory.readonly',
     ].join(' ');
   }
   public getAttachment(messageId: string, attachmentId: string) {
@@ -111,6 +114,89 @@ export class GoogleMailManager implements MailManager {
       { threadIds },
     );
   }
+
+  private async searchOtherContacts(query: string) {
+    console.warn('Searching other contacts query:', query);
+
+    const res = await people({
+      version: 'v1',
+      auth: this.auth,
+    }).otherContacts.search({
+      query,
+      readMask: 'names,emailAddresses',
+    });
+
+    return (
+      res.data.results?.map((result) => {
+        return {
+          email: result.person?.emailAddresses?.[0]?.value ?? '',
+          name: result.person?.names?.[0]?.displayName ?? '',
+        };
+      }) ?? []
+    );
+  }
+
+  private async searchDirectory(query: string) {
+    console.warn('Searching directory query:', query);
+
+    const res = await people({
+      version: 'v1',
+      auth: this.auth,
+    }).people.searchDirectoryPeople({
+      query,
+      readMask: 'names,emailAddresses',
+      sources: ['DIRECTORY_SOURCE_TYPE_DOMAIN_PROFILE'],
+    });
+
+    return (
+      res.data.people?.map((result) => {
+        return {
+          email: result.emailAddresses?.[0]?.value ?? '',
+          name: result.names?.[0]?.displayName ?? '',
+        };
+      }) ?? []
+    );
+  }
+
+  private async searchContacts(query: string) {
+    console.warn('Searching contacts query:', query);
+
+    const res = await people({
+      version: 'v1',
+      auth: this.auth,
+    }).people.searchContacts({
+      query,
+      readMask: 'names,emailAddresses',
+      sources: ['READ_SOURCE_TYPE_CONTACT'],
+    });
+
+    return (
+      res.data.results?.map((result) => {
+        return {
+          email: result.person?.emailAddresses?.[0]?.value ?? '',
+          name: result.person?.names?.[0]?.displayName ?? '',
+        };
+      }) ?? []
+    );
+  }
+
+  public searchPeople(query: string) {
+    console.warn('Searching query:', query);
+    return this.withErrorHandler('searchPeople', async () => {
+      const [directoryResults, contactsResults, otherContactsResults] = await Promise.all([
+        this.searchDirectory(query),
+        this.searchContacts(query),
+        this.searchOtherContacts(query),
+      ]);
+
+      const results = [...directoryResults, ...contactsResults, ...otherContactsResults];
+
+      return {
+        results,
+      };
+    });
+  }
+
   public getUserInfo() {
     return this.withErrorHandler(
       'getUserInfo',
@@ -260,8 +346,7 @@ export class GoogleMailManager implements MailManager {
                 )?.value;
                 if (contentId && part.body?.attachmentId) {
                   try {
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    const imageData = await this.getAttachment(message.id!, part.body.attachmentId);
+                    const imageData = await this.getAttachment(message.id, part.body.attachmentId);
                     if (imageData) {
                       const cleanContentId = contentId.replace(/[<>]/g, '');
 

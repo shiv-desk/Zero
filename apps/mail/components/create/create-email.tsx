@@ -1,4 +1,5 @@
 import { useActiveConnection, useConnections } from '@/hooks/use-connections';
+import { useOpenComposeModal } from '@/hooks/use-open-compose-modal';
 import { Dialog, DialogClose } from '@/components/ui/dialog';
 import { useEmailAliases } from '@/hooks/use-email-aliases';
 import { cleanEmailAddresses } from '@/lib/email-utils';
@@ -62,13 +63,19 @@ export function CreateEmail({
     error: draftError,
   } = useDraft(draftId ?? propDraftId ?? null);
   const t = useTranslations();
-  const navigate = useNavigate();
-  const { enableScope, disableScope } = useHotkeysContext();
-  const [isDraftFailed, setIsDraftFailed] = useState(false);
+  const [_isDraftFailed, setIsDraftFailed] = useState(false);
   const trpc = useTRPC();
   const { mutateAsync: sendEmail } = useMutation(trpc.mail.send.mutationOptions());
-  const [isComposeOpen, setIsComposeOpen] = useQueryState('isComposeOpen');
   const { data: activeConnection } = useActiveConnection();
+  const {
+    isOpen: isComposeOpen,
+    setIsOpen: setIsComposeOpen,
+    body: queryBody,
+    subject: querySubject,
+    to: queryTo,
+    cc: queryCc,
+    bcc: queryBcc,
+  } = useOpenComposeModal();
 
   // If there was an error loading the draft, set the failed state
   useEffect(() => {
@@ -133,7 +140,7 @@ export function CreateEmail({
 
   useEffect(() => {
     if (propDraftId && !draftId) {
-      setDraftId(propDraftId);
+      void setDraftId(propDraftId);
     }
   }, [propDraftId, draftId, setDraftId]);
 
@@ -147,13 +154,13 @@ export function CreateEmail({
   // Cast draft to our extended type that includes CC and BCC
   const typedDraft = draft as unknown as DraftType;
 
-  const handleDialogClose = (open: boolean) => {
-    setIsComposeOpen(open ? 'true' : null);
+  const handleDialogClose = async (open: boolean) => {
+    await setIsComposeOpen(open);
   };
 
   return (
     <>
-      <Dialog open={!!isComposeOpen} onOpenChange={handleDialogClose}>
+      <Dialog open={isComposeOpen} onOpenChange={handleDialogClose}>
         <div className="flex min-h-screen flex-col items-center justify-center gap-1">
           <div className="flex w-[750px] justify-start">
             <DialogClose asChild className="flex">
@@ -175,20 +182,23 @@ export function CreateEmail({
               key={typedDraft?.id || 'composer'}
               className="mb-12 rounded-2xl border"
               onSendEmail={handleSendEmail}
-              initialMessage={typedDraft?.content || initialBody}
+              initialMessage={typedDraft?.content || initialBody || queryBody}
               initialTo={
-                typedDraft?.to?.map((e: string) => e.replace(/[<>]/g, '')) ||
-                processInitialEmails(initialTo)
+                typedDraft?.to?.map((e: string) => e.replace(/[<>]/g, '')) || initialTo.length > 0
+                  ? processInitialEmails(initialTo)
+                  : processInitialEmails(queryTo.join(','))
               }
               initialCc={
-                typedDraft?.cc?.map((e: string) => e.replace(/[<>]/g, '')) ||
-                processInitialEmails(initialCc)
+                typedDraft?.cc?.map((e: string) => e.replace(/[<>]/g, '')) || initialCc.length > 0
+                  ? processInitialEmails(initialCc)
+                  : processInitialEmails(queryCc.join(','))
               }
               initialBcc={
-                typedDraft?.bcc?.map((e: string) => e.replace(/[<>]/g, '')) ||
-                processInitialEmails(initialBcc)
+                typedDraft?.bcc?.map((e: string) => e.replace(/[<>]/g, '')) || initialBcc.length > 0
+                  ? processInitialEmails(initialBcc)
+                  : processInitialEmails(queryBcc.join(','))
               }
-              initialSubject={typedDraft?.subject || initialSubject}
+              initialSubject={typedDraft?.subject || initialSubject || querySubject}
               autofocus={true}
             />
           )}

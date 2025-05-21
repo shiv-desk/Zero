@@ -114,7 +114,7 @@ const composeEmailTool = tool({
       username: 'AI Assistant',
       connectionId: activeConnection.id,
     });
-    return { newBody };
+    return { newBody, data: { to: data.to, cc: data.cc, subject: data.emailSubject } };
   },
 });
 
@@ -409,6 +409,18 @@ const deleteLabel = tool({
   },
 });
 
+const getContacts = tool({
+  description: 'Get contacts that match the name or email given',
+  parameters: z.object({
+    query: z.string().describe('The name or email to search for'),
+  }),
+  execute: async ({ query }) => {
+    const mailManager = await getMailManager();
+
+    return await mailManager.searchPeople(query);
+  },
+});
+
 export const tools = {
   [Tools.GetThread]: getEmail,
   [Tools.ComposeEmail]: composeEmailTool,
@@ -422,6 +434,7 @@ export const tools = {
   [Tools.BulkDelete]: bulkDelete,
   [Tools.BulkArchive]: bulkArchive,
   [Tools.DeleteLabel]: deleteLabel,
+  [Tools.GetContacts]: getContacts,
 };
 
 // export const executions = {

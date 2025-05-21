@@ -1,3 +1,10 @@
+import type {
+  OutlookCategory as Category,
+  MailFolder,
+  Message,
+  User,
+  Contact,
+} from '@microsoft/microsoft-graph-types';
 import {
   deleteActiveConnection,
   FatalErrors,
@@ -5,12 +12,6 @@ import {
   sanitizeContext,
   StandardizedError,
 } from './utils';
-import type {
-  OutlookCategory as Category,
-  MailFolder,
-  Message,
-  User,
-} from '@microsoft/microsoft-graph-types';
 import type { IOutgoingMessage, Label, ParsedMessage } from '../../types';
 import { sanitizeTipTapHtml } from '../sanitize-tip-tap-html';
 import { Client } from '@microsoft/microsoft-graph-client';
@@ -809,6 +810,20 @@ export class OutlookMailManager implements MailManager {
       console.error('Error creating Outlook Mail Folder:', error);
       throw error;
     }
+  }
+  public async searchPeople(query: string) {
+    const contacts: Contact[] = await this.graphClient
+      .api('/me/contacts')
+      .select('givenName,surname,emailAddresses')
+      .search(query)
+      .get();
+
+    return contacts.map((contact) => {
+      return {
+        email: contact.emailAddresses?.[0]?.address || '',
+        name: contact.givenName || contact.surname || '',
+      };
+    });
   }
   public async updateLabel(id: string, label: Label) {
     console.warn('updateLabel needs to differentiate between Category and Mail Folder updates.');

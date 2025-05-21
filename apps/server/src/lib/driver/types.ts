@@ -85,4 +85,7 @@ export interface MailManager {
   deleteLabel(id: string): Promise<void>;
   getEmailAliases(): Promise<{ email: string; name?: string; primary?: boolean }[]>;
   revokeRefreshToken(refreshToken: string): Promise<boolean>;
+  searchPeople(query: string): Promise<{
+    results: { name: string; email: string }[];
+  }>;
 }

@@ -28,6 +28,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { ArrowsPointingIn, ArrowsPointingOut, PanelLeftOpen, Phone } from '../icons/icons';
 import { AI_SIDEBAR_COOKIE_NAME, SIDEBAR_COOKIE_MAX_AGE } from '@/lib/constants';
 import { StyledEmailAssistantSystemPrompt, AiChatPrompt } from '@/lib/prompts';
+import { useOpenComposeModal } from '@/hooks/use-open-compose-modal';
 import { Link, useLocation, useParams } from 'react-router';
 import { useSearchValue } from '@/hooks/use-search-value';
 import { useQueryClient } from '@tanstack/react-query';
@@ -384,6 +385,7 @@ function AISidebar({ className }: AISidebarProps) {
   const { folder } = useParams<{ folder: string }>();
   const { refetch: refetchLabels } = useLabels();
   const [searchValue] = useSearchValue();
+  const { open: openComposeModal } = useOpenComposeModal();
 
   // Initialize shared chat state that will be used by both desktop and mobile views
   // This ensures conversation continuity when switching between viewport sizes
@@ -431,6 +433,9 @@ function AISidebar({ className }: AISidebarProps) {
               }),
             ),
           );
+          break;
+        case Tools.ComposeEmail:
+          await openComposeModal();
           break;
       }
       await track({ featureId: 'chat-messages', value: 1 });
