@@ -130,12 +130,12 @@ export function LabelDialog({
                         <button
                           key={index}
                           type="button"
-                          className={`h-10 w-10 rounded-[4px] border-[0.5px] border-white/10 transition-all ${
+                          className={`h-10 w-10 rounded-[4px] transition-all ${
                             formColor?.backgroundColor === color.backgroundColor &&
                             formColor?.textColor === color.textColor
                               ? 'scale-110 ring-2 ring-blue-500'
                               : 'hover:scale-105'
-                          }`}
+                          } ${color.backgroundColor === '#ffffff' ? 'border border-neutral-200 dark:border-white/10' : 'border-[0.5px] border-white/10'}`}
                           style={{ backgroundColor: color.backgroundColor }}
                           onClick={() =>
                             form.setValue('color', {

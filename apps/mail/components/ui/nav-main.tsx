@@ -235,10 +235,11 @@ export function NavMain({ items }: NavMainProps) {
         {!pathname.includes('/settings') && !isBottomNav && state !== 'collapsed' && (
           <Collapsible defaultOpen={true} className="group/collapsible flex-col">
             <SidebarMenuItem className="mb-4" style={{ height: 'auto' }}>
-              <div className="mx-2 mb-4 flex items-center justify-between">
+              <div className="mx-2 mb-4 flex items-center justify-between w-full">
                 <span className="text-[13px] text-[#6D6D6D] dark:text-[#898989]">
                   {activeAccount?.providerId === 'google' ? 'Labels' : 'Folders'}
                 </span>
+                <div className='pr-[22px]'>
                 {activeAccount?.providerId === 'google' ? (
                   <LabelDialog
                     trigger={
@@ -247,13 +248,14 @@ export function NavMain({ items }: NavMainProps) {
                         size="icon"
                         className="mr-1 h-4 w-4 p-0 hover:bg-transparent"
                       >
-                        <Plus className="h-3 w-3 text-[#6D6D6D] dark:text-[#898989]" />
+                        <Plus className="h-2.5 w-2.5 text-[#6D6D6D] dark:text-[#898989]" />
                       </Button>
                     }
                     onSubmit={onSubmit}
                     onSuccess={refetch}
                   />
                 ) : activeAccount?.providerId === 'microsoft' ? null : null}
+                </div>
               </div>
 
               <SidebarLabels
