@@ -38,7 +38,7 @@ export const RenderLabels = ({ count = 1, labels }: { count?: number; labels: La
           key={label.id}
           onClick={handleFilterByLabel(label)}
           className={cn(
-            'dark:bg-subtleBlack bg-subtleWhite text-primary inline-block overflow-hidden truncate rounded bg-opacity-10 px-1.5 py-0.5 text-xs font-medium',
+            'dark:bg-subtleBlack bg-subtleWhite text-primary inline-block overflow-hidden truncate rounded dark:bg-opacity-10 px-1.5 py-0.5 text-xs font-medium',
             searchValue.value.includes(`label:${label.name}`) &&
               'border-neutral-800 dark:border-white',
           )}

@@ -429,17 +429,17 @@ const Thread = memo(
                       {getThreadData.labels ? <MailLabels labels={getThreadData.labels} /> : null}
                     </div> */}
                     {threadLabels && (
-                      <div className="mr-0 flex w-full items-center justify-end gap-1">
+                      <div className="mr-0 flex w-fit items-center justify-end gap-1">
                         {!isFolderSent ? <RenderLabels labels={threadLabels} /> : null}
                         {/* {getThreadData.labels ? <MailLabels labels={getThreadData.labels} /> : null} */}
                       </div>
                     )}
                   </div>
-                  {emailContent && (
+                  {/* {emailContent && (
                     <div className="text-muted-foreground mt-2 line-clamp-2 text-xs">
                       {highlightText(emailContent, searchValue.highlight)}
                     </div>
-                  )}
+                  )} */}
                   {mainSearchTerm && (
                     <div className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
                       <span className="bg-primary/10 text-primary rounded px-1.5 py-0.5">
