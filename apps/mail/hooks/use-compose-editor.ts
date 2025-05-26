@@ -4,6 +4,7 @@ import { defaultExtensions } from '@/components/create/extensions';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { TextSelection } from 'prosemirror-state';
+import Mention from '@tiptap/extension-mention';
 import { Markdown } from 'tiptap-markdown';
 import { isObjectType } from 'remeda';
 import { cn } from '@/lib/utils';
@@ -154,6 +155,7 @@ const useComposeEditor = ({
   onKeydown,
   onMousedown,
   onModEnter,
+  onMention,
   onTab,
   myInfo,
   sender,
@@ -164,6 +166,7 @@ const useComposeEditor = ({
   placeholder?: string;
   // Events
   onChange?: (content: Record<string, unknown>) => void | Promise<void>;
+  onMention?: (mention: string) => void | Promise<void>;
   onAttachmentsChange?: (attachments: File[]) => void | Promise<void>;
   onLengthChange?: (length: number) => void | Promise<void>;
   onBlur?: NonNullable<Parameters<typeof useEditor>[0]>['onBlur'];
@@ -213,6 +216,22 @@ const useComposeEditor = ({
       ? [
           PreventNavigateOnDragOver((files) => {
             onAttachmentsChange(files);
+          }),
+        ]
+      : []),
+    ...(onMention
+      ? [
+          Mention.configure({
+            HTMLAttributes: {
+              class: 'mention',
+            },
+            suggestion: {
+              char: '@',
+              items({ query }) {
+                return ['Adam', 'Adam2'];
+              },
+            },
+            // suggestion,
           }),
         ]
       : []),

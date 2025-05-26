@@ -39,7 +39,7 @@ import {
 import { useIsFetching, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { moveThreadsTo, type ThreadDestination } from '@/lib/thread-actions';
-import type { MailSelectMode, ParsedMessage, ThreadProps } from '@/types';
+import type { ThreadProps, MailSelectMode, ParsedMessage } from '@/types';
 import { ThreadContextMenu } from '@/components/context/thread-context';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { useMail, type Config } from '@/components/mail/use-mail';
@@ -833,15 +833,6 @@ export const MailList = memo(
                     }
                   }}
                 />
-                <div className="mt-5">
-                  <p className="text-lg">It's empty here</p>
-                  <p className="text-md text-[#6D6D6D] dark:text-white/50">
-                    Search for another email or{' '}
-                    <button className="underline" onClick={clearFilters}>
-                      clear filters
-                    </button>
-                  </p>
-                </div>
               </div>
             )}
           </>

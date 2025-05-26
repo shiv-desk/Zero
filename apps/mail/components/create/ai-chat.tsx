@@ -1,6 +1,7 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { CurvedArrow, Puzzle, Stop } from '../icons/icons';
+import useComposeEditor from '@/hooks/use-compose-editor';
 import { useRef, useCallback, useEffect } from 'react';
 import { PricingDialog } from '../ui/pricing-dialog';
 import { Markdown } from '@react-email/components';
@@ -10,6 +11,7 @@ import { TextShimmer } from '../ui/text-shimmer';
 import { useThread } from '@/hooks/use-threads';
 import { MailLabels } from '../mail/mail-list';
 import { cn, getEmailLogo } from '@/lib/utils';
+import { EditorContent } from '@tiptap/react';
 import { Button } from '../ui/button';
 import { format } from 'date-fns-tz';
 import { useQueryState } from 'nuqs';
@@ -178,9 +180,30 @@ export function AIChat({
     }
   }, []);
 
+  const editor = useComposeEditor({
+    placeholder: 'Ask Zero to do anything...',
+    onLengthChange: () => setInput(editor.getText()),
+    onKeydown(event) {
+      if (event.key === 'Enter' && !event.metaKey && !event.shiftKey) {
+        event.preventDefault();
+        handleSubmit(event as unknown as React.FormEvent<HTMLFormElement>);
+        editor.commands.clearContent(true);
+      }
+    },
+    onMention: (mention) => {
+      console.log(mention);
+    },
+  });
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    handleSubmit(e);
+    editor.commands.clearContent(true);
+  };
 
   return (
     <div className={cn('flex h-full flex-col', isFullScreen ? 'mx-auto max-w-xl' : '')}>
@@ -270,44 +293,33 @@ export function AIChat({
 
       {/* Fixed input at bottom */}
       <div className={cn('mb-4 flex-shrink-0 px-4', isFullScreen ? 'px-0' : '')}>
-        <div className="bg-offsetLight relative rounded-lg dark:bg-[#141414]">
+        <div className="bg-offsetLight relative rounded-lg p-2 dark:bg-[#202020]">
           {showVoiceChat ? (
             <VoiceChat onClose={() => setShowVoiceChat(false)} />
           ) : (
             <div className="flex flex-col">
               <div className="w-full">
-                <form id="ai-chat-form" onSubmit={handleSubmit} className="relative">
-                  <Input
-                    ref={inputRef}
-                    readOnly={!chatMessages.enabled}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ask Zero to do anything..."
-                    className="placeholder:text-muted-foreground h-8 w-full resize-none rounded-lg border-none bg-white px-3 py-2 pr-10 text-sm ring-0 focus:ring-0 focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#141414]"
-                  />
-                  {status === 'ready' ? (
-                    <button
-                      form="ai-chat-form"
-                      type="submit"
-                      className="absolute right-1 top-1/2 inline-flex h-6 -translate-y-1/2 cursor-pointer items-center justify-center gap-1.5 overflow-hidden rounded-lg"
-                      disabled={!input.trim() || !chatMessages.enabled}
-                    >
-                      <div className="dark:bg[#141414] flex h-5 items-center justify-center gap-1 rounded-sm bg-[#262626] px-1 pr-0.5">
-                        <CurvedArrow className="mt-1.5 h-4 w-4 fill-white dark:fill-[#929292]" />
-                      </div>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={stop}
-                      type="button"
-                      className="absolute right-1 top-1/2 inline-flex h-6 -translate-y-1/2 cursor-pointer items-center justify-center gap-1.5 overflow-hidden rounded-lg"
-                    >
-                      <div className="flex h-5 items-center justify-center gap-1 rounded-sm px-1">
-                        <Stop className="h-4 w-4 fill-[#DE5555]" />
-                      </div>
-                    </button>
-                  )}
+                <form id="ai-chat-form" onSubmit={onSubmit} className="relative">
+                  <div className="grow self-stretch overflow-y-auto bg-[#FFFFFF] outline-white/5 dark:bg-[#202020]">
+                    <div className={cn('max-h-[100px] w-full')}>
+                      <EditorContent editor={editor} className="h-full w-full" />
+                    </div>
+                  </div>
                 </form>
+              </div>
+              <div className="grid">
+                <div className="flex justify-end">
+                  <button
+                    form="ai-chat-form"
+                    type="submit"
+                    className="inline-flex cursor-pointer gap-1.5 rounded-lg"
+                    disabled={!chatMessages.enabled}
+                  >
+                    <div className="dark:bg[#141414] flex h-5 items-center justify-center gap-1 rounded-sm bg-[#262626] px-2 pr-0.5">
+                      <CurvedArrow className="mt-1.5 h-4 w-4 fill-white dark:fill-[#929292]" />
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           )}
