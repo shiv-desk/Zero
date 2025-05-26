@@ -295,6 +295,13 @@ export const AiChatPrompt = (threadId: string, currentFolder: string, currentFil
       </capabilities>
   
       <tools>
+        <tool name="buildGmailSearchQuery">
+          <description>Build a Gmail search query</description>
+          <parameters>
+            <parameter name="query" type="string" />
+          </parameters>
+          <usageExample>buildGmailSearchQuery({ query: "emails sent to John Doe" })</usageExample>
+        </tool>
         <tool name="${Tools.ListThreads}">
           <description>Search for and retrieve up to 5 threads matching a query.</description>
           <note>Use the buildGmailSearchQuery tool to build a Gmail search query by calling it: buildGmailSearchQuery(userQuestion) then use listThreads to search for threads.</note>

@@ -30,11 +30,11 @@ Most email services today are either **closed-source**, **data-hungry**, or **to
 
 Zero is built with modern and reliable technologies:
 
-- **Frontend**: Next.js, React, TypeScript, TailwindCSS, Shadcn UI
+- **Frontend**: Remix, Vite, React, TypeScript, TailwindCSS, Shadcn UI
 - **Backend**: Node.js, Drizzle ORM
 - **Database**: PostgreSQL
-- **Authentication**: Better Auth, Google OAuth
-<!-- - **Testing**: Jest, React Testing Library -->
+- **Authentication**: Better Auth
+- **Infra**: Cloudflare
 
 ## Getting Started
 
