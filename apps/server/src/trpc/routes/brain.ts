@@ -103,6 +103,7 @@ export const brainRouter = router({
       try {
         return labels ? (JSON.parse(labels) as z.infer<typeof labelsSchema>) : [];
       } catch (error) {
+        await env.connection_labels.put(connection.id, JSON.stringify([]));
         console.error(`[GET_LABELS] Error parsing labels for ${connection.id}:`, error);
         return [];
       }
