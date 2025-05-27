@@ -762,34 +762,40 @@ const MailDisplay = ({ emailData, index, totalEmails, demo }: Props) => {
     `;
 
       // Write content to the iframe
-      const iframeDoc = printFrame.contentDocument || printFrame.contentWindow.document;
-      iframeDoc.open();
-      iframeDoc.write(printContent);
-      iframeDoc.close();
+      const iframeDoc = printFrame.contentDocument || printFrame.contentWindow?.document;
+      if (iframeDoc) {
+        iframeDoc.open();
+        iframeDoc.write(printContent);
+        iframeDoc.close();
 
-      // Wait for content to load, then print
-      printFrame.onload = function () {
-        setTimeout(() => {
-          try {
-            // Focus the iframe and print
-            printFrame.contentWindow.focus();
-            printFrame.contentWindow.print();
+        // Wait for content to load, then print
+        printFrame.onload = function () {
+          setTimeout(() => {
+            try {
+              if (!printFrame.contentWindow) {
+                console.error('Failed to get iframe window');
+                return;
+              }
+              // Focus the iframe and print
+              printFrame.contentWindow.focus();
+              printFrame.contentWindow?.print();
 
-            // Clean up - remove the iframe after a delay
-            setTimeout(() => {
+              // Clean up - remove the iframe after a delay
+              setTimeout(() => {
+                if (printFrame && printFrame.parentNode) {
+                  document.body.removeChild(printFrame);
+                }
+              }, 1000);
+            } catch (error) {
+              console.error('Error during print:', error);
+              // Clean up on error
               if (printFrame && printFrame.parentNode) {
                 document.body.removeChild(printFrame);
               }
-            }, 1000);
-          } catch (error) {
-            console.error('Error during print:', error);
-            // Clean up on error
-            if (printFrame && printFrame.parentNode) {
-              document.body.removeChild(printFrame);
             }
-          }
-        }, 500);
-      };
+          }, 500);
+        };
+      }
     } catch (error) {
       console.error('Error printing email:', error);
       alert('Failed to print email. Please try again.');
