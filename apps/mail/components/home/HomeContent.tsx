@@ -379,7 +379,7 @@ export default function HomeContent() {
           target="_blank"
         >
           <img
-            src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=970417&theme=light&t=1748371877825"
+            src="https://api.producthunt.com/widgets/embed-image/v1/top-post-badge.svg?post_id=970417&theme=light&period=daily&t=1748467771181"
             alt="Zero - AI&#0032;Native&#0032;Email&#0032;Client | Product Hunt"
             style={{ width: '250px', height: '54px' }}
             width="250"
@@ -387,6 +387,7 @@ export default function HomeContent() {
             className="mt-2"
           />
         </a>
+       
       </section>
 
       <section className="relative mt-10 hidden flex-col justify-center md:flex">
@@ -1545,7 +1546,7 @@ export default function HomeContent() {
         </div>
       </div>
 
-      <motion.div
+      {/* <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
@@ -1587,7 +1588,7 @@ export default function HomeContent() {
             height={50}
           />
         </div>
-      </motion.div>
+      </motion.div> */}
 
       <div className="relative mt-52 flex items-center justify-center">
         <Footer />
