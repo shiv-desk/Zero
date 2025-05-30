@@ -161,7 +161,7 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { cookie: string }> {
             return [
               {
                 type: 'text' as const,
-                text: loadedThread.latest?.subject ?? '',
+                text: `Subject: ${loadedThread.latest?.subject ?? ''}`,
               },
               {
                 type: 'text' as const,
