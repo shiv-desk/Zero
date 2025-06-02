@@ -369,7 +369,7 @@ function AISidebar({ className }: AISidebarProps) {
 
   const agent = useAgent({
     agent: 'ZeroAgent',
-    name: session?.user.email ?? 'general',
+    name: session?.user.id ?? 'general',
     host: `${import.meta.env.VITE_PUBLIC_BACKEND_URL}`,
   });
 
@@ -444,13 +444,25 @@ function AISidebar({ className }: AISidebarProps) {
     },
   });
 
-  useHotkeys('Meta+0', () => {
-    setOpen(!open);
-  });
+  useHotkeys(
+    'Meta+0',
+    () => {
+      setOpen(!open);
+    },
+    {
+      useKey: true,
+    },
+  );
 
-  useHotkeys('Control+0', () => {
-    setOpen(!open);
-  });
+  useHotkeys(
+    'Control+0',
+    () => {
+      setOpen(!open);
+    },
+    {
+      useKey: true,
+    },
+  );
 
   const handleNewChat = useCallback(() => {
     chatState.setMessages([]);
