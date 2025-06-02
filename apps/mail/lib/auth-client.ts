@@ -1,4 +1,4 @@
-import { phoneNumberClient } from 'better-auth/client/plugins';
+import { phoneNumberClient, jwtClient } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
 import type { Auth } from '@zero/server/auth';
 
@@ -7,7 +7,7 @@ export const authClient = createAuthClient({
   fetchOptions: {
     credentials: 'include',
   },
-  plugins: [phoneNumberClient()],
+  plugins: [phoneNumberClient(), jwtClient()],
 });
 
 export const { signIn, signUp, signOut, useSession, getSession, $fetch } = authClient;

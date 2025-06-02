@@ -1,12 +1,36 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
-import { trpcClient } from '@/providers/query-provider';
+import { authClient, useSession } from '@/lib/auth-client';
+import { useTRPC } from '@/providers/query-provider';
 import { useConversation } from '@elevenlabs/react';
-import { useThreads } from '@/hooks/use-threads';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { useSession } from '@/lib/auth-client';
 import { useEffect, useState } from 'react';
-import dedent from 'dedent';
+
+const useElevenLabs = () => {
+  const trpc = useTRPC();
+  const {
+    data: signedData,
+    isLoading,
+    status,
+    error,
+  } = useQuery(trpc.voice.getSignedUrl.queryOptions());
+
+  if (error) {
+    throw error;
+  }
+
+  if (status === 'pending') {
+    return {
+      isLoading,
+    };
+  }
+
+  return {
+    signedUrl: signedData.signedUrl,
+    isLoading,
+  };
+};
 
 // Loading component
 const LoadingState = () => (
@@ -149,64 +173,6 @@ const ConversationControls = ({
   </div>
 );
 
-// Hook for email context
-const useEmailContext = (threads: any, threadsError: any) => {
-  const [isLoadingThreads, setIsLoadingThreads] = useState(false);
-  const [emailContext, setEmailContext] = useState<string>('');
-
-  useEffect(() => {
-    if (!threads || threads.length === 0) {
-      setEmailContext('No recent emails found.');
-      return;
-    }
-    if (threadsError) {
-      setEmailContext('Unable to load email threads.');
-      return;
-    }
-
-    const fetchThreadContents = async () => {
-      setIsLoadingThreads(true);
-      try {
-        const threadContents = await Promise.all(
-          threads.slice(0, 10).map(async (thread: any) => {
-            try {
-              const data = await trpcClient.mail.get.query({ id: thread.id });
-              if (!data.messages?.length) return null;
-
-              const latestMessage = data.messages[data.messages.length - 1]!;
-              return dedent`
-              Subject: ${latestMessage.subject}
-              From: ${latestMessage.sender.name} (${latestMessage.sender.email})
-              Date: ${new Date(latestMessage.receivedOn).toLocaleString()}
-              Status: ${data.hasUnread ? 'Unread' : 'Read'}
-              Preview: ${latestMessage.body?.slice(0, 200)}...
-              ---
-              `;
-            } catch {
-              return null;
-            }
-          }),
-        );
-
-        const validContents = threadContents.filter(Boolean) as string[];
-        setEmailContext(
-          validContents.length > 0
-            ? `You have access to the following recent emails:\n\n${validContents.join('\n')}`
-            : 'No recent emails found.',
-        );
-      } catch {
-        setEmailContext('Failed to load email content.');
-      } finally {
-        setIsLoadingThreads(false);
-      }
-    };
-
-    fetchThreadContents();
-  }, [threads, threadsError]);
-
-  return { isLoadingThreads, emailContext };
-};
-
 // Main component
 export default function VoicePage() {
   const { data: session, isPending } = useSession();
@@ -214,8 +180,7 @@ export default function VoicePage() {
   const [isMuted, setIsMuted] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isInitializing, setIsInitializing] = useState(false);
-  const [{ error: threadsError }, threads] = useThreads();
-  const { isLoadingThreads, emailContext } = useEmailContext(threads, threadsError);
+  const { signedUrl, cookie, isLoading } = useElevenLabs();
 
   useEffect(() => {
     if (!session) return;
@@ -243,8 +208,8 @@ export default function VoicePage() {
 
   const requestMicPermission = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stream.getTracks().forEach((track) => track.stop());
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      // stream.getTracks().forEach((track) => track.stop());
       setHasPermission(true);
       setErrorMessage('');
     } catch {
@@ -262,19 +227,25 @@ export default function VoicePage() {
       setIsInitializing(true);
       setErrorMessage('');
 
-      const agentId = import.meta.env.VITE_PUBLIC_ELEVENLABS_AGENT_ID;
-      if (!agentId) throw new Error('ElevenLabs Agent ID not configured');
+      if (signedUrl) {
+        const result = await authClient.token();
+        const token = result.data?.token;
 
-      await conversation.startSession({
-        agentId: agentId,
-        dynamicVariables: {
-          user_name: session?.user.name || 'User',
-          user_email: session?.user.email || '',
-          email_context: emailContext,
-          thread_count: threads?.length.toString() || '0',
-        },
-      });
-    } catch {
+        if (!token) {
+          throw new Error('No token found');
+        }
+
+        console.log('token', token);
+
+        await conversation.startSession({
+          signedUrl,
+          dynamicVariables: {
+            token: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Failed to start conversation', error);
       setErrorMessage('Failed to start conversation. Please try again.');
     }
   };
@@ -303,7 +274,6 @@ export default function VoicePage() {
     <div className="container mx-auto p-6">
       <div className="mx-auto max-w-2xl">
         <h1 className="mb-6 text-3xl font-bold">Voice Assistant</h1>
-
         <Card>
           <CardHeader>
             <CardTitle>ElevenLabs Voice Interface</CardTitle>
@@ -313,8 +283,6 @@ export default function VoicePage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <EmailStatus isLoading={isLoadingThreads} threadCount={threads?.length || 0} />
-
             <ConversationStatus
               status={status}
               isInitializing={isInitializing}
@@ -325,7 +293,7 @@ export default function VoicePage() {
             <ConversationControls
               isConnected={status === 'connected'}
               isInitializing={isInitializing}
-              isLoadingThreads={isLoadingThreads}
+              isLoadingThreads={false}
               isMuted={isMuted}
               hasPermission={hasPermission}
               onStart={handleStartConversation}
