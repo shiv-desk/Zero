@@ -1,12 +1,13 @@
 import { env, WorkerEntrypoint } from 'cloudflare:workers';
 import { contextStorage } from 'hono/context-storage';
+import { ZeroMCP } from './services/mcp-service/mcp';
 import { createLocalJWKSet, jwtVerify } from 'jose';
-import { ZeroAgent, ZeroMCP } from './routes/chat';
 import { routePartykitRequest } from 'partyserver';
 import { trpcServer } from '@hono/trpc-server';
 import { agentsMiddleware } from 'hono-agents';
 import { DurableMailbox } from './lib/party';
 import { autumnApi } from './routes/autumn';
+import { ZeroAgent } from './routes/chat';
 import type { HonoContext } from './ctx';
 import { createAuth } from './lib/auth';
 import { aiRouter } from './routes/ai';
@@ -98,34 +99,34 @@ const app = new Hono<HonoContext>()
       exposeHeaders: ['X-Zero-Redirect'],
     }),
   )
-  .mount(
-    '/sse',
-    async (request, env, ctx) => {
-      const authBearer = request.headers.get('Authorization');
-      if (!authBearer) {
-        return new Response('Unauthorized', { status: 401 });
-      }
-      ctx.props = {
-        cookie: authBearer,
-      };
-      return ZeroMCP.serveSSE('/sse', { binding: 'ZERO_MCP' }).fetch(request, env, ctx);
-    },
-    { replaceRequest: false },
-  )
-  .mount(
-    '/mcp',
-    async (request, env, ctx) => {
-      const authBearer = request.headers.get('Authorization');
-      if (!authBearer) {
-        return new Response('Unauthorized', { status: 401 });
-      }
-      ctx.props = {
-        cookie: authBearer,
-      };
-      return ZeroMCP.serve('/mcp', { binding: 'ZERO_MCP' }).fetch(request, env, ctx);
-    },
-    { replaceRequest: false },
-  )
+  // .mount(
+  //   '/sse',
+  //   async (request, env, ctx) => {
+  //     const authBearer = request.headers.get('Authorization');
+  //     if (!authBearer) {
+  //       return new Response('Unauthorized', { status: 401 });
+  //     }
+  //     ctx.props = {
+  //       cookie: authBearer,
+  //     };
+  //     return ZeroMCP.serveSSE('/sse', { binding: 'ZERO_MCP' }).fetch(request, env, ctx);
+  //   },
+  //   { replaceRequest: false },
+  // )
+  // .mount(
+  //   '/mcp',
+  //   async (request, env, ctx) => {
+  //     const authBearer = request.headers.get('Authorization');
+  //     if (!authBearer) {
+  //       return new Response('Unauthorized', { status: 401 });
+  //     }
+  //     ctx.props = {
+  //       cookie: authBearer,
+  //     };
+  //     return ZeroMCP.serve('/mcp', { binding: 'ZERO_MCP' }).fetch(request, env, ctx);
+  //   },
+  //   { replaceRequest: false },
+  // )
   .route('/api', api)
   .use(
     '*',

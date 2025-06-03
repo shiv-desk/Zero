@@ -93,13 +93,19 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { phoneNumber: string }> {
     this.server.tool(
       'listThreads',
       {
-        folder: z.string().default(FOLDERS.INBOX),
-        query: z.string().optional(),
-        maxResults: z.number().optional().default(5),
-        labelIds: z.array(z.string()).optional(),
-        pageToken: z.string().optional(),
+        folder: z.string().default(FOLDERS.INBOX).describe('The folder to list threads from'),
+        query: z.string().optional().describe('The query to filter threads by'),
+        maxResults: z
+          .number()
+          .optional()
+          .default(5)
+          .describe('The maximum number of threads to return'),
+        labelIds: z.array(z.string()).optional().describe('The label IDs to filter threads by'),
+        pageToken: z.string().optional().describe('The page token to use for pagination'),
       },
       async (s) => {
+        console.log('[DEBUG] listThreads', s);
+
         const result = await driver.list({
           folder: s.folder,
           query: s.query,
@@ -134,42 +140,58 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { phoneNumber: string }> {
     this.server.tool(
       'getThread',
       {
-        threadId: z.string(),
+        threadId: z.string().describe('The ID of the thread to get'),
       },
       async (s) => {
-        const thread = await driver.get(s.threadId);
-        const response = await env.VECTORIZE.getByIds([s.threadId]);
-        if (response.length && response?.[0]?.metadata?.['content']) {
-          const content = response[0].metadata['content'] as string;
-          const shortResponse = await env.AI.run('@cf/facebook/bart-large-cnn', {
-            input_text: content,
-          });
+        console.log('[DEBUG] getThread', s);
+
+        try {
+          const thread = await driver.get(s.threadId);
+          const response = await env.VECTORIZE.getByIds([s.threadId]);
+          if (response.length && response?.[0]?.metadata?.['content']) {
+            const content = response[0].metadata['content'] as string;
+            const shortResponse = await env.AI.run('@cf/facebook/bart-large-cnn', {
+              input_text: content,
+            });
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: shortResponse.summary,
+                },
+              ],
+            };
+          }
           return {
             content: [
               {
                 type: 'text',
-                text: shortResponse.summary,
+                text: `Subject: ${thread.latest?.subject}`,
+              },
+            ],
+          };
+        } catch (error) {
+          console.error('[DEBUG] getThread error', error);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Failed to get thread',
               },
             ],
           };
         }
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Subject: ${thread.latest?.subject}`,
-            },
-          ],
-        };
       },
     );
 
     this.server.tool(
       'markThreadsRead',
       {
-        threadIds: z.array(z.string()),
+        threadIds: z.array(z.string()).describe('The IDs of the threads to mark as read'),
       },
       async (s) => {
+        console.log('[DEBUG] markThreadsRead', s);
+
         await driver.modifyLabels(s.threadIds, {
           addLabels: [],
           removeLabels: ['UNREAD'],
@@ -188,9 +210,11 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { phoneNumber: string }> {
     this.server.tool(
       'markThreadsUnread',
       {
-        threadIds: z.array(z.string()),
+        threadIds: z.array(z.string()).describe('The IDs of the threads to mark as unread'),
       },
       async (s) => {
+        console.log('[DEBUG] markThreadsUnread', s);
+
         await driver.modifyLabels(s.threadIds, {
           addLabels: ['UNREAD'],
           removeLabels: [],
@@ -209,11 +233,13 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { phoneNumber: string }> {
     this.server.tool(
       'modifyLabels',
       {
-        threadIds: z.array(z.string()),
-        addLabelIds: z.array(z.string()),
-        removeLabelIds: z.array(z.string()),
+        threadIds: z.array(z.string()).describe('The IDs of the threads to modify'),
+        addLabelIds: z.array(z.string()).describe('The IDs of the labels to add'),
+        removeLabelIds: z.array(z.string()).describe('The IDs of the labels to remove'),
       },
       async (s) => {
+        console.log('[DEBUG] modifyLabels', s);
+
         await driver.modifyLabels(s.threadIds, {
           addLabels: s.addLabelIds,
           removeLabels: s.removeLabelIds,
@@ -230,6 +256,8 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { phoneNumber: string }> {
     );
 
     this.server.tool('getCurrentDate', async () => {
+      console.log('[DEBUG] getCurrentDate');
+
       return {
         content: [
           {
@@ -241,6 +269,8 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { phoneNumber: string }> {
     });
 
     this.server.tool('getUserLabels', async () => {
+      console.log('[DEBUG] getUserLabels');
+
       const labels = await driver.getUserLabels();
       return {
         content: [
@@ -257,9 +287,11 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { phoneNumber: string }> {
     this.server.tool(
       'getLabel',
       {
-        id: z.string(),
+        id: z.string().describe('The ID of the label to get'),
       },
       async (s) => {
+        console.log('[DEBUG] getLabel', s);
+
         const label = await driver.getLabel(s.id);
         return {
           content: [
@@ -279,11 +311,13 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { phoneNumber: string }> {
     this.server.tool(
       'createLabel',
       {
-        name: z.string(),
-        backgroundColor: z.string().optional(),
-        textColor: z.string().optional(),
+        name: z.string().describe('The name of the label to create'),
+        backgroundColor: z.string().optional().describe('The background color of the label'),
+        textColor: z.string().optional().describe('The text color of the label'),
       },
       async (s) => {
+        console.log('[DEBUG] createLabel', s);
+
         try {
           await driver.createLabel({
             name: s.name,
@@ -319,9 +353,11 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { phoneNumber: string }> {
     this.server.tool(
       'bulkDelete',
       {
-        threadIds: z.array(z.string()),
+        threadIds: z.array(z.string()).describe('The IDs of the threads to delete'),
       },
       async (s) => {
+        console.log('[DEBUG] bulkDelete', s);
+
         try {
           await driver.modifyLabels(s.threadIds, {
             addLabels: ['TRASH'],
@@ -351,9 +387,11 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { phoneNumber: string }> {
     this.server.tool(
       'bulkArchive',
       {
-        threadIds: z.array(z.string()),
+        threadIds: z.array(z.string()).describe('The IDs of the threads to archive'),
       },
       async (s) => {
+        console.log('[DEBUG] bulkArchive', s);
+
         try {
           await driver.modifyLabels(s.threadIds, {
             addLabels: [],
