@@ -6,13 +6,13 @@ import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/
 import { elevenLabsIncomingSocketMessageSchema } from './eleven-labs-incoming-message-schema';
 import type { ElevenLabsOutgoingSocketMessage } from './eleven-labs-outgoing-message-schema';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { createAuth, createSimpleAuth } from '../../lib/auth';
 import type { MailManager } from '../../lib/driver/types';
 import { tools } from '../../routes/agent/tools';
 import { createDriver } from '../../lib/driver';
 import { systemPrompt } from './system-prompt';
 import { ElevenLabsClient } from 'elevenlabs';
 import { generateText, type Tool } from 'ai';
+import { createAuth } from '../../lib/auth';
 import { env } from 'cloudflare:workers';
 import { openai } from '@ai-sdk/openai';
 import { Tools } from '../../types';
@@ -439,7 +439,7 @@ export class CallService {
 
   private async connectToMCP(hostname: string) {
     const auth = createAuth();
-    const session = await auth.api.
+    const session = await auth.api.getToken();
     const token = session?.session.token;
 
     if (!token) {
