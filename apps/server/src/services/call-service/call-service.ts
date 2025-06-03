@@ -345,22 +345,6 @@ export class CallService {
     // }
   }
 
-  private debugAudio(base64: string) {
-    if (base64.length === 0) {
-      console.log(`[ElevenLabs] Empty audio received`);
-      return;
-    }
-
-    const buf = Buffer.from(base64, 'base64');
-    console.log('[DEBUG] received audio bytes:', buf.length);
-
-    if (Uint8Array.prototype.slice.call(buf, 0, 4).toString() === 'RIFF') {
-      console.log('[DEBUG] audio is RIFF');
-    } else {
-      console.log('[DEBUG] audio is not RIFF');
-    }
-  }
-
   private async sendAudioToTwilio(audio: string) {
     if (
       !this.callWebSocket ||
