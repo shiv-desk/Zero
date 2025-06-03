@@ -147,29 +147,41 @@ export class ZeroMCP extends McpAgent<typeof env, {}, { phoneNumber: string }> {
 
         try {
           const thread = await driver.get(s.threadId);
-          const response = await env.VECTORIZE.getByIds([s.threadId]);
-          if (response.length && response?.[0]?.metadata?.['content']) {
-            const content = response[0].metadata['content'] as string;
-            const shortResponse = await env.AI.run('@cf/facebook/bart-large-cnn', {
-              input_text: content,
-            });
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: shortResponse.summary,
-                },
-              ],
-            };
-          }
+
+          const content = thread.messages.at(-1)?.body;
+
           return {
             content: [
               {
                 type: 'text',
-                text: `Subject: ${thread.latest?.subject}`,
+                text: `Subject:\n\n${thread.latest?.subject}\n\nBody:\n\n${content}`,
               },
             ],
           };
+
+          // const response = await env.VECTORIZE.getByIds([s.threadId]);
+          // if (response.length && response?.[0]?.metadata?.['content']) {
+          //   const content = response[0].metadata['content'] as string;
+          //   const shortResponse = await env.AI.run('@cf/facebook/bart-large-cnn', {
+          //     input_text: content,
+          //   });
+          //   return {
+          //     content: [
+          //       {
+          //         type: 'text',
+          //         text: shortResponse.summary,
+          //       },
+          //     ],
+          //   };
+          // }
+          // return {
+          //   content: [
+          //     {
+          //       type: 'text',
+          //       text: `Subject: ${thread.latest?.subject}`,
+          //     },
+          //   ],
+          // };
         } catch (error) {
           console.error('[DEBUG] getThread error', error);
           return {
