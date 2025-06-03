@@ -12,7 +12,6 @@ import { createDriver } from '../../lib/driver';
 import { systemPrompt } from './system-prompt';
 import { ElevenLabsClient } from 'elevenlabs';
 import { generateText, type Tool } from 'ai';
-import { createAuth } from '../../lib/auth';
 import { env } from 'cloudflare:workers';
 import { openai } from '@ai-sdk/openai';
 import { Tools } from '../../types';
@@ -65,6 +64,7 @@ const phoneMapping = async (phoneNumber: string) => {
 };
 
 export class CallService {
+  private phoneNumber: string | null = null;
   private streamSid: string | null = null;
   private elevenLabsWebSocket: WebSocket | null = null;
   private callWebSocket: WebSocket | null = null;
@@ -80,15 +80,18 @@ export class CallService {
     this.twilio = new Twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
   }
 
-  public async startCall(callWebSocket: WebSocket) {
+  public async startCall(callWebSocket: WebSocket, hostname: string) {
     this.attachCallWebSocketEventListeners(callWebSocket);
 
     // Get the caller phone number from Twilio
     const twilioCall = await this.twilio.calls(this.callSid).fetch();
+    this.phoneNumber = twilioCall.from;
 
     // Initialize the mail driver and tools
     this.callWebSocket = callWebSocket;
-    await this.initializeMailDriver(twilioCall.from);
+    await this.initializeMailDriver(this.phoneNumber);
+
+    await this.connectToMCP(hostname);
 
     // Attach event listeners to the call WebSocket
     await this.connectToElevenLabs();
@@ -224,7 +227,7 @@ export class CallService {
 
   private sendToElevenLabs(message: ElevenLabsOutgoingSocketMessage) {
     if (!this.elevenLabsWebSocket || this.elevenLabsWebSocket.readyState !== WebSocket.OPEN) {
-      console.warn('[ElevenLabs] WebSocket not connected or not open, skipping message');
+      // console.warn('[ElevenLabs] WebSocket not connected or not open, skipping message');
 
       return;
     }
@@ -302,6 +305,17 @@ export class CallService {
         this.conversationHistory.push({
           role: 'user',
           content: data.user_transcription_event?.user_transcript ?? '',
+        });
+
+        if (!this.streamSid) {
+          console.warn('[Twilio] Stream SID not set, skipping clear message');
+
+          return;
+        }
+
+        this.sendToTwilio({
+          event: 'clear',
+          streamSid: this.streamSid,
         });
         break;
     }
@@ -438,29 +452,26 @@ export class CallService {
   }
 
   private async connectToMCP(hostname: string) {
-    const auth = createAuth();
-    const session = await auth.api.getToken();
-    const token = session?.session.token;
-
-    if (!token) {
-      throw new Error('Could not get session token');
-    }
-
     const client = new Client({
       name: 'zero-agent',
       version: '1.0.0',
     });
 
-    const transport = new StreamableHTTPClientTransport(new URL('/api/mcp', hostname), {
+    if (!this.phoneNumber) {
+      throw new Error('[Twilio] Phone number not set');
+    }
+
+    const mcpUrl = new URL('/api/ai/mcp', `https://${hostname}`);
+    const transport = new StreamableHTTPClientTransport(mcpUrl, {
       requestInit: {
         headers: {
-          Authorization: `Bearer `,
+          'X-Phone-Number': this.phoneNumber,
         },
       },
     });
 
-    const connection = await client.connect(transport);
+    await client.connect(transport);
 
-    return connection;
+    return client;
   }
 }

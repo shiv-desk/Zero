@@ -41,6 +41,10 @@ export const twilioSocketMessageSchema = z.discriminatedUnion('event', [
       callSid: z.string(),
     }),
   }),
+  z.object({
+    event: z.literal('clear'),
+    streamSid: z.string(),
+  }),
 ]);
 
 export type TwilioSocketMessage = z.infer<typeof twilioSocketMessageSchema>;

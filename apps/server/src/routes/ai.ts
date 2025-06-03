@@ -1,5 +1,5 @@
 import { CallService } from '../services/call-service/call-service';
-import { ZeroMCP } from './chat';
+import { ZeroMCP } from '../services/mcp-service/mcp';
 import twilio from 'twilio';
 import { Hono } from 'hono';
 
@@ -7,9 +7,22 @@ export const aiRouter = new Hono();
 
 aiRouter.get('/', (c) => c.text('Twilio + ElevenLabs + AI Phone System Ready'));
 
-aiRouter.get('/mcp', (c) => {
-  return ZeroMCP.serve('/mcp', { binding: 'ZERO_MCP' }).fetch(c.req, c.env, ctx);
-});
+aiRouter.mount(
+  '/mcp',
+  async (request, env, ctx) => {
+    const phoneNumber = request.headers.get('X-Phone-Number');
+    if (!phoneNumber) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+
+    ctx.props = {
+      phoneNumber,
+    };
+
+    return ZeroMCP.serve('/api/ai/mcp', { binding: 'ZERO_MCP' }).fetch(request, env, ctx);
+  },
+  { replaceRequest: false },
+);
 
 aiRouter.post('/voice', async (c) => {
   const formData = await c.req.formData();
@@ -29,7 +42,11 @@ aiRouter.post('/voice', async (c) => {
 });
 
 aiRouter.get('/call/:callSid', async (c) => {
-  console.log('[THE URL]', c.req.url);
+  const hostname = c.req.header('host');
+  if (!hostname) {
+    return new Response('No hostname specified', { status: 500 });
+  }
+
   const callSid = c.req.param('callSid');
 
   console.log(`[Twilio] WebSocket connection requested`);
@@ -51,7 +68,7 @@ aiRouter.get('/call/:callSid', async (c) => {
   const callService = new CallService(callSid);
   console.log(`[Twilio] Call service created`);
 
-  c.executionCtx.waitUntil(callService.startCall(server));
+  c.executionCtx.waitUntil(callService.startCall(server, hostname));
 
   // Handle WebSocket events
   server.addEventListener('open', () => {
