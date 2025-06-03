@@ -2,8 +2,11 @@ import {
   twilioSocketMessageSchema,
   type TwilioSocketMessage,
 } from './twilio-socket-message-schema';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { elevenLabsIncomingSocketMessageSchema } from './eleven-labs-incoming-message-schema';
 import type { ElevenLabsOutgoingSocketMessage } from './eleven-labs-outgoing-message-schema';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { createAuth, createSimpleAuth } from '../../lib/auth';
 import type { MailManager } from '../../lib/driver/types';
 import { tools } from '../../routes/agent/tools';
 import { createDriver } from '../../lib/driver';
@@ -12,9 +15,11 @@ import { ElevenLabsClient } from 'elevenlabs';
 import { generateText, type Tool } from 'ai';
 import { env } from 'cloudflare:workers';
 import { openai } from '@ai-sdk/openai';
+import { Tools } from '../../types';
 import { createDb } from '../../db';
+import z, { ZodError } from 'zod';
 import { Twilio } from 'twilio';
-import { ZodError } from 'zod';
+import { pick } from 'remeda';
 
 // TODO: Remove this once we have a proper phone mapping
 const mapping: Record<string, { connectionId: string }> = {
@@ -312,7 +317,15 @@ export class CallService {
     switch (toolName) {
       case 'manage_email':
         try {
-          const aiResponse = await this.generateAIResponse(this.conversationHistory);
+          const parsedParameters = z
+            .object({
+              query: z.string(),
+            })
+            .parse(parameters);
+          const aiResponse = await this.generateAIResponse(
+            parsedParameters.query,
+            this.conversationHistory,
+          );
 
           this.sendToElevenLabs({
             type: 'client_tool_result',
@@ -321,6 +334,21 @@ export class CallService {
             is_error: false,
           });
         } catch (error) {
+          console.error('[DEBUG - TOOL CALL] error', error);
+
+          if (error instanceof ZodError) {
+            console.error('[DEBUG - TOOL CALL] zod error', error.errors);
+
+            this.sendToElevenLabs({
+              type: 'client_tool_result',
+              tool_call_id: toolCallId,
+              result: error.issues.map((issue) => issue.message).join(', '),
+              is_error: true,
+            });
+
+            return;
+          }
+
           this.sendToElevenLabs({
             type: 'client_tool_result',
             tool_call_id: toolCallId,
@@ -377,7 +405,8 @@ export class CallService {
   }
 
   private async generateAIResponse(
-    conversationHistory: readonly {
+    query: string,
+    aiConversationHistory: readonly {
       role: 'user' | 'assistant';
       content: string;
     }[],
@@ -390,10 +419,14 @@ export class CallService {
             role: 'system',
             content: systemPrompt,
           },
-          ...conversationHistory,
+          ...aiConversationHistory,
+          {
+            role: 'user',
+            content: query,
+          },
         ],
         maxTokens: 100_000,
-        tools: this.tools ?? {},
+        tools: this.tools ? pick(this.tools, [Tools.AskZeroMailbox, Tools.CreateLabel]) : undefined,
       });
 
       return text;
@@ -402,5 +435,32 @@ export class CallService {
 
       return "I'm sorry, I had trouble processing your request. Please try again.";
     }
+  }
+
+  private async connectToMCP(hostname: string) {
+    const auth = createAuth();
+    const session = await auth.api.
+    const token = session?.session.token;
+
+    if (!token) {
+      throw new Error('Could not get session token');
+    }
+
+    const client = new Client({
+      name: 'zero-agent',
+      version: '1.0.0',
+    });
+
+    const transport = new StreamableHTTPClientTransport(new URL('/api/mcp', hostname), {
+      requestInit: {
+        headers: {
+          Authorization: `Bearer `,
+        },
+      },
+    });
+
+    const connection = await client.connect(transport);
+
+    return connection;
   }
 }

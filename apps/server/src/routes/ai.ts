@@ -1,10 +1,15 @@
 import { CallService } from '../services/call-service/call-service';
+import { ZeroMCP } from './chat';
 import twilio from 'twilio';
 import { Hono } from 'hono';
 
 export const aiRouter = new Hono();
 
 aiRouter.get('/', (c) => c.text('Twilio + ElevenLabs + AI Phone System Ready'));
+
+aiRouter.get('/mcp', (c) => {
+  return ZeroMCP.serve('/mcp', { binding: 'ZERO_MCP' }).fetch(c.req, c.env, ctx);
+});
 
 aiRouter.post('/voice', async (c) => {
   const formData = await c.req.formData();
