@@ -103,7 +103,7 @@ export const elevenLabsIncomingSocketMessageSchema = z.discriminatedUnion('type'
           .nullable()
           .describe('Unique identifier for this tool call request.'),
         parameters: z
-          .record(z.string(), z.unknown())
+          .record(z.string(), z.union([z.string(), z.number(), z.boolean()]))
           .nullable()
           .describe('Tool-specific parameters for the execution request.'),
       })

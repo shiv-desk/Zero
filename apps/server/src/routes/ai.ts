@@ -24,6 +24,7 @@ aiRouter.post('/voice', async (c) => {
 });
 
 aiRouter.get('/call/:callSid', async (c) => {
+  console.log('[THE URL]', c.req.url);
   const callSid = c.req.param('callSid');
 
   console.log(`[Twilio] WebSocket connection requested`);
@@ -42,10 +43,10 @@ aiRouter.get('/call/:callSid', async (c) => {
   // Accept the server WebSocket
   server.accept();
 
-  const callService = new CallService();
+  const callService = new CallService(callSid);
   console.log(`[Twilio] Call service created`);
 
-  c.executionCtx.waitUntil(callService.startCall(server, callSid));
+  c.executionCtx.waitUntil(callService.startCall(server));
 
   // Handle WebSocket events
   server.addEventListener('open', () => {

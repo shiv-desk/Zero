@@ -4,29 +4,98 @@ import {
 } from './twilio-socket-message-schema';
 import { elevenLabsIncomingSocketMessageSchema } from './eleven-labs-incoming-message-schema';
 import type { ElevenLabsOutgoingSocketMessage } from './eleven-labs-outgoing-message-schema';
+import type { MailManager } from '../../lib/driver/types';
+import { tools } from '../../routes/agent/tools';
+import { createDriver } from '../../lib/driver';
+import { systemPrompt } from './system-prompt';
 import { ElevenLabsClient } from 'elevenlabs';
+import { generateText, type Tool } from 'ai';
 import { env } from 'cloudflare:workers';
+import { openai } from '@ai-sdk/openai';
+import { createDb } from '../../db';
 import { Twilio } from 'twilio';
 import { ZodError } from 'zod';
 
+// TODO: Remove this once we have a proper phone mapping
+const mapping: Record<string, { connectionId: string }> = {
+  '+18185176315': {
+    connectionId: '0f2a3874-8106-441c-86d7-ecad65d063f0',
+  },
+};
+
+// TODO: remove this too asap
+const phoneMapping = async (phoneNumber: string) => {
+  console.log('[DEBUG] phoneMapping', phoneNumber);
+
+  const db = createDb(env.HYPERDRIVE.connectionString);
+
+  const obj = mapping[phoneNumber];
+  const connection = await db.query.connection.findFirst({
+    where: (connection, ops) => {
+      return ops.eq(connection.id, obj.connectionId);
+    },
+  });
+
+  if (!connection) {
+    throw new Error('No connection found.');
+  }
+
+  if (!connection.accessToken || !connection.refreshToken) {
+    throw new Error('Invalid connection');
+  }
+
+  const driver = createDriver(connection.providerId, {
+    auth: {
+      userId: connection.userId,
+      accessToken: connection.accessToken,
+      refreshToken: connection.refreshToken,
+      email: connection.email,
+    },
+  });
+
+  return {
+    driver,
+    connectionId: connection.id,
+  };
+};
+
 export class CallService {
-  private callSid: string | null = null;
   private streamSid: string | null = null;
   private elevenLabsWebSocket: WebSocket | null = null;
   private callWebSocket: WebSocket | null = null;
   private twilio: Twilio;
+  private mailDriver: MailManager | null = null;
+  private tools: Record<string, Tool> | null = null;
+  private conversationHistory: {
+    role: 'user' | 'assistant';
+    content: string;
+  }[] = [];
 
-  constructor() {
+  constructor(private callSid: string) {
     this.twilio = new Twilio(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
   }
 
-  public async startCall(callWebSocket: WebSocket, callSid: string) {
-    this.callSid = callSid;
-    this.callWebSocket = callWebSocket;
-
+  public async startCall(callWebSocket: WebSocket) {
     this.attachCallWebSocketEventListeners(callWebSocket);
+
+    // Get the caller phone number from Twilio
+    const twilioCall = await this.twilio.calls(this.callSid).fetch();
+
+    // Initialize the mail driver and tools
+    this.callWebSocket = callWebSocket;
+    await this.initializeMailDriver(twilioCall.from);
+
+    // Attach event listeners to the call WebSocket
     await this.connectToElevenLabs();
+
     console.log(`[Twilio] WebSocket connected for call ${this.callSid}`);
+  }
+
+  private async initializeMailDriver(phoneNumber: string) {
+    const { driver, connectionId } = await phoneMapping(phoneNumber);
+
+    this.mailDriver = driver;
+    this.tools = tools(driver, connectionId);
   }
 
   public async stopCall() {
@@ -78,6 +147,7 @@ export class CallService {
           console.log('[DEBUG] handling twilio start message', data);
           console.log(`[Twilio] Media stream started for call ${this.callSid}`);
           this.streamSid = data.streamSid;
+          console.log('[DEBUG] params', data.start);
           break;
         case 'media':
           // (Twilio -> ElevenLabs)
@@ -91,7 +161,7 @@ export class CallService {
           await this.endTwilioCall();
           break;
         default:
-          console.warn(`[Twilio] Unhandled event: ${data.event}`);
+          console.warn(`[Twilio] Unhandled event: ${data['event']}`);
           break;
       }
     } catch (error) {
@@ -130,8 +200,6 @@ export class CallService {
           resolve();
         });
         this.elevenLabsWebSocket.addEventListener('message', async (event) => {
-          console.log(`[ElevenLabs] WebSocket message received`);
-
           await this.handleElevenLabsMessage(event.data.toString());
         });
         this.elevenLabsWebSocket.addEventListener('error', async (event) => {
@@ -160,7 +228,6 @@ export class CallService {
   }
 
   private async handleElevenLabsMessage(message: string) {
-    console.log('[ElevenLabs] Message received');
     const data = await elevenLabsIncomingSocketMessageSchema.parseAsync(JSON.parse(message));
 
     switch (data.type) {
@@ -184,9 +251,12 @@ export class CallService {
           '[ElevenLabs] Agent response received:',
           `"${data.agent_response_event?.agent_response}"`,
         );
+        this.conversationHistory.push({
+          role: 'assistant',
+          content: data.agent_response_event?.agent_response ?? '',
+        });
         break;
       case 'ping':
-        console.log(`[ElevenLabs] Ping received`);
         this.sendToElevenLabs({
           type: 'pong',
           event_id: data.ping_event?.event_id ?? 0,
@@ -204,6 +274,18 @@ export class CallService {
         break;
       case 'client_tool_call':
         console.log(`[ElevenLabs] Client tool call received`);
+        if (
+          data.client_tool_call &&
+          data.client_tool_call.tool_name &&
+          data.client_tool_call.tool_call_id
+        ) {
+          const toolName = data.client_tool_call.tool_name;
+          const toolCallId = data.client_tool_call.tool_call_id;
+          const parameters = data.client_tool_call.parameters;
+          await this.handleToolCall(toolName, toolCallId, parameters);
+        } else {
+          console.warn('No tool call data');
+        }
         break;
       case 'agent_response_correction':
         console.log(`[ElevenLabs] Agent response correction received`);
@@ -216,8 +298,55 @@ export class CallService {
           `[ElevenLabs] User transcript received:`,
           `"${data.user_transcription_event?.user_transcript}"`,
         );
+        this.conversationHistory.push({
+          role: 'user',
+          content: data.user_transcription_event?.user_transcript ?? '',
+        });
         break;
     }
+  }
+
+  private async handleToolCall(
+    toolName: string,
+    toolCallId: string,
+    parameters: Record<string, string | number | boolean> | null,
+  ) {
+    console.log('[DEBUG - TOOL CALL] handleToolCall', toolName, toolCallId, parameters);
+
+    switch (toolName) {
+      case 'manage_email':
+        try {
+          const aiResponse = await this.generateAIResponse(this.conversationHistory);
+
+          this.sendToElevenLabs({
+            type: 'client_tool_result',
+            tool_call_id: toolCallId,
+            result: aiResponse,
+            is_error: false,
+          });
+        } catch (error) {
+          this.sendToElevenLabs({
+            type: 'client_tool_result',
+            tool_call_id: toolCallId,
+            result: 'I had trouble processing your request. Please try again.',
+            is_error: true,
+          });
+        }
+        break;
+      default:
+        console.warn('[ElevenLabs] Unhandled tool call:', toolName);
+        break;
+    }
+
+    // get driver and connection id
+    // switch (toolName) {
+    //   case 'get_thread':
+    //     break;
+    //   case 'list_threads':
+    //     break;
+    //   default:
+    //     console.warn('[ElevenLabs] Unhandled tool call:', toolName);
+    // }
   }
 
   private debugAudio(base64: string) {
@@ -271,39 +400,32 @@ export class CallService {
     this.callWebSocket.send(JSON.stringify(message));
     console.log('[DEBUG] sent message to twilio');
   }
+
+  private async generateAIResponse(
+    conversationHistory: readonly {
+      role: 'user' | 'assistant';
+      content: string;
+    }[],
+  ) {
+    try {
+      const { text } = await generateText({
+        model: openai('gpt-4o-mini'),
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
+          ...conversationHistory,
+        ],
+        maxTokens: 100_000,
+        tools: this.tools ?? {},
+      });
+
+      return text;
+    } catch (error) {
+      console.error('AI processing error', error);
+
+      return "I'm sorry, I had trouble processing your request. Please try again.";
+    }
+  }
 }
-
-// const generateAIResponse = async ({
-//   transcript,
-//   conversationHistory,
-// }: {
-//   transcript: string;
-//   conversationHistory: readonly {
-//     role: 'user' | 'assistant';
-//     content: string;
-//   }[];
-// }) => {
-//   try {
-//     const { text } = await generateText({
-//       model: openai('gpt-4o-mini'),
-//       messages: [
-//         {
-//           role: 'system',
-//           content: systemPrompt,
-//         },
-//         ...conversationHistory,
-//         {
-//           role: 'user',
-//           content: transcript,
-//         },
-//       ],
-//       maxTokens: 100_000,
-//     });
-
-//     return text;
-//   } catch (error) {
-//     console.error('AI processing error', error);
-
-//     return "I'm sorry, I had trouble processing your request. Please try again.";
-//   }
-// };
