@@ -9,10 +9,6 @@ import { env } from 'cloudflare:workers';
 import { Twilio } from 'twilio';
 import { ZodError } from 'zod';
 
-// Checklist
-// - [X] Audio from Twilio call to ElevenLabs (Twilio -> ElevenLabs)
-// - [ ] Audio from ElevenLabs to Twilio call (ElevenLabs -> Twilio)
-
 export class CallService {
   private callSid: string | null = null;
   private streamSid: string | null = null;
