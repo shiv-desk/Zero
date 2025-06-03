@@ -264,11 +264,7 @@ export class CallService {
         break;
       case 'audio':
         // (ElevenLabs -> Twilio)
-        this.debugAudio(data.audio_event?.audio_base_64 ?? '');
-
-        console.log(`[ElevenLabs] Audio received`);
         if (data.audio_event?.audio_base_64) {
-          console.log(`[ElevenLabs] Sending audio to Twilio`);
           await this.sendAudioToTwilio(data.audio_event.audio_base_64);
         }
         break;
@@ -366,8 +362,6 @@ export class CallService {
   }
 
   private async sendAudioToTwilio(audio: string) {
-    console.log('[DEBUG] sending audio to twilio ~~~~~~~~~~~~');
-
     if (
       !this.callWebSocket ||
       this.callWebSocket.readyState !== WebSocket.OPEN ||
@@ -377,9 +371,6 @@ export class CallService {
 
       throw new Error('[Twilio] WebSocket not connected or not open');
     }
-
-    console.log('[DEBUG] checking audio from 11labs');
-    this.debugAudio(audio);
 
     this.sendToTwilio({
       event: 'media',

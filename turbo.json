@@ -1,12 +1,21 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "envMode": "loose",
-  "ui": "tui",
   "tasks": {
     "build": {
-      "dependsOn": ["^build", "sentry:sourcemaps"],
-      "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": ["build/**", "!.react-router/**", "dist/**"]
+      "dependsOn": [
+        "^build",
+        "sentry:sourcemaps"
+      ],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        ".env*"
+      ],
+      "outputs": [
+        "build/**",
+        "!.react-router/**",
+        "dist/**"
+      ]
     },
     "dev": {
       "persistent": true,
