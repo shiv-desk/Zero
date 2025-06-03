@@ -1,5 +1,4 @@
-import { createCallService } from '../services/call-service';
-import { upgradeWebSocket } from 'hono/cloudflare-workers';
+import { CallService } from '../services/call-service/call-service';
 import twilio from 'twilio';
 import { Hono } from 'hono';
 
@@ -8,36 +7,56 @@ export const aiRouter = new Hono();
 aiRouter.get('/', (c) => c.text('Twilio + ElevenLabs + AI Phone System Ready'));
 
 aiRouter.post('/voice', async (c) => {
-  const hostHeader = c.req.header('host');
+  const formData = await c.req.formData();
+  const callSid = formData.get('CallSid') as string;
+  const from = formData.get('From') as string;
 
+  console.log(`Incoming call from ${from} with callSid ${callSid}`);
+
+  const hostHeader = c.req.header('host');
   const voiceResponse = new twilio.twiml.VoiceResponse();
   voiceResponse.connect().stream({
-    url: `wss://${hostHeader}/api/ai/media-stream`,
+    url: `wss://${hostHeader}/api/ai/call/${callSid}`,
   });
 
   c.header('Content-Type', 'application/xml');
   return c.body(voiceResponse.toString());
 });
 
-aiRouter.get(
-  '/media-stream',
-  upgradeWebSocket(async () => {
-    const callService = await createCallService();
+aiRouter.get('/call/:callSid', async (c) => {
+  const callSid = c.req.param('callSid');
 
-    return {
-      onMessage: async (event, ws) => {
-        console.log('Twilio WebSocket message received', event);
+  console.log(`[Twilio] WebSocket connection requested`);
 
-        await callService.handleWebSocketMessage(event.data, (data) => {
-          ws.send(data);
-        });
-      },
-      onError: (event) => {
-        console.error('WebSocket error', event);
-      },
-      onClose: (event) => {
-        console.log('Twilio WebSocket closed', event);
-      },
-    };
-  }),
-);
+  // Check for WebSocket upgrade header
+  const upgradeHeader = c.req.header('Upgrade');
+  if (upgradeHeader !== 'websocket') {
+    return new Response('Expected Upgrade: websocket', { status: 426 });
+  }
+
+  console.log(`[Twilio] WebSocket connection requested for call ${callSid}`);
+
+  // Create WebSocket pair
+  const [client, server] = Object.values(new WebSocketPair());
+
+  // Accept the server WebSocket
+  server.accept();
+
+  const callService = new CallService();
+  console.log(`[Twilio] Call service created`);
+
+  c.executionCtx.waitUntil(callService.startCall(server, callSid));
+
+  // Handle WebSocket events
+  server.addEventListener('open', () => {
+    console.log(`[Twilio] WebSocket connection opened`);
+  });
+
+  // Return response with status 101 and client WebSocket
+  console.log(`[Twilio] Returning response with status 101 and client WebSocket`);
+
+  return new Response(null, {
+    status: 101,
+    webSocket: client,
+  });
+});
