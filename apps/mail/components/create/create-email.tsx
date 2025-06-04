@@ -71,8 +71,18 @@ export function CreateEmail({
   const [isComposeOpen, setIsComposeOpen] = useQueryState('isComposeOpen');
   const { data: activeConnection } = useActiveConnection();
   const { data: settings, isLoading: settingsLoading } = useSettings();
-  const isInternallySavingDraft = sessionStorage.getItem('isInternallySavingDraft') === 'true';
+  const [isInternallySavingDraft, setIsInternallySavingDraft] = useState(false);
   const showLoadingState = isDraftLoading && !isInternallySavingDraft && !draft;
+
+  useEffect(() => {
+    try {
+      const flag = sessionStorage.getItem('isInternallySavingDraft') === 'true';
+      setIsInternallySavingDraft(flag);
+    } catch (error) {
+      console.warn('Failed to read sessionStorage flag:', error);
+      setIsInternallySavingDraft(false);
+    }
+  }, []);
 
   // If there was an error loading the draft, set the failed state
   useEffect(() => {

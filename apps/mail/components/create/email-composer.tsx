@@ -120,15 +120,32 @@ export function EmailComposer({
   const ccWrapperRef = useRef<HTMLDivElement>(null);
   const bccWrapperRef = useRef<HTMLDivElement>(null);
   const { data: activeConnection } = useActiveConnection();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    const isInternallySaving = sessionStorage.getItem('isInternallySavingDraft');
-    if (isInternallySaving === 'true') {
-      setIsInternallySavingDraft(true);
-      setTimeout(() => {
-        sessionStorage.removeItem('isInternallySavingDraft');
-        setIsInternallySavingDraft(false);
-      }, 200);
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      const isInternallySaving = sessionStorage.getItem('isInternallySavingDraft');
+      if (isInternallySaving === 'true') {
+        setIsInternallySavingDraft(true);
+        setTimeout(() => {
+          try {
+            sessionStorage.removeItem('isInternallySavingDraft');
+          } catch (error) {
+            console.warn('Failed to remove sessionStorage flag:', error);
+          }
+          setIsInternallySavingDraft(false);
+        }, 200);
+      }
+    } catch (error) {
+      console.warn('Failed to read sessionStorage flag:', error);
     }
   }, []);
 
@@ -356,7 +373,11 @@ export function EmailComposer({
   // It needs to be done this way so that react doesn't catch on to the state change
   // and we can still refresh to get the latest draft for the reply.
   const setDraftIdQueryParam = (draftId: string | null) => {
-    sessionStorage.setItem('isInternallySavingDraft', 'true');
+    try {
+      sessionStorage.setItem('isInternallySavingDraft', 'true');
+    } catch (error) {
+      console.warn('Failed to set sessionStorage flag:', error);
+    }
 
     const url = new URL(window.location.href);
 
@@ -373,7 +394,11 @@ export function EmailComposer({
     window.history.replaceState(nextState, '', url);
 
     setTimeout(() => {
-      sessionStorage.removeItem('isInternallySavingDraft');
+      try {
+        sessionStorage.removeItem('isInternallySavingDraft');
+      } catch (error) {
+        console.warn('Failed to remove sessionStorage flag:', error);
+      }
     }, 200);
   };
 
@@ -413,9 +438,9 @@ export function EmailComposer({
     } finally {
       setIsSavingDraft(false);
       setHasUnsavedChanges(false);
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
         setIsInternallySavingDraft(false);
-      }, 100);
+      }, 200);
     }
   };
 
