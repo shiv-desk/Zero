@@ -71,6 +71,9 @@ export function CreateEmail({
   const [isComposeOpen, setIsComposeOpen] = useQueryState('isComposeOpen');
   const { data: activeConnection } = useActiveConnection();
   const { data: settings, isLoading: settingsLoading } = useSettings();
+  const isInternallySavingDraft = sessionStorage.getItem('isInternallySavingDraft') === 'true';
+  const showLoadingState = isDraftLoading && !isInternallySavingDraft && !draft;
+
   // If there was an error loading the draft, set the failed state
   useEffect(() => {
     if (draftError) {
@@ -171,7 +174,7 @@ export function CreateEmail({
               </button>
             </DialogClose>
           </div>
-          {isDraftLoading ? (
+          {showLoadingState ? (
             <div className="flex h-[600px] w-[750px] items-center justify-center rounded-2xl border">
               <div className="text-center">
                 <div className="mx-auto mb-4 h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"></div>

@@ -109,6 +109,7 @@ export function EmailComposer({
   const { data: session } = useSession();
   const [urlDraftId] = useQueryState('draftId');
   const [draftId, setDraftId] = useState<string | null>(urlDraftId ?? null);
+  const [isInternallySavingDraft, setIsInternallySavingDraft] = useState(false);
   const [aiGeneratedMessage, setAiGeneratedMessage] = useState<string | null>(null);
   const [aiIsLoading, setAiIsLoading] = useState(false);
   const [isGeneratingSubject, setIsGeneratingSubject] = useState(false);
@@ -119,6 +120,17 @@ export function EmailComposer({
   const ccWrapperRef = useRef<HTMLDivElement>(null);
   const bccWrapperRef = useRef<HTMLDivElement>(null);
   const { data: activeConnection } = useActiveConnection();
+
+  useEffect(() => {
+    const isInternallySaving = sessionStorage.getItem('isInternallySavingDraft');
+    if (isInternallySaving === 'true') {
+      setIsInternallySavingDraft(true);
+      setTimeout(() => {
+        sessionStorage.removeItem('isInternallySavingDraft');
+        setIsInternallySavingDraft(false);
+      }, 200);
+    }
+  }, []);
 
   // Add this function to handle clicks outside the input fields
   useEffect(() => {
@@ -344,6 +356,8 @@ export function EmailComposer({
   // It needs to be done this way so that react doesn't catch on to the state change
   // and we can still refresh to get the latest draft for the reply.
   const setDraftIdQueryParam = (draftId: string | null) => {
+    sessionStorage.setItem('isInternallySavingDraft', 'true');
+
     const url = new URL(window.location.href);
 
     // mutate only one key
@@ -357,6 +371,10 @@ export function EmailComposer({
     };
     setDraftId(draftId);
     window.history.replaceState(nextState, '', url);
+
+    setTimeout(() => {
+      sessionStorage.removeItem('isInternallySavingDraft');
+    }, 200);
   };
 
   const saveDraft = async () => {
@@ -370,6 +388,7 @@ export function EmailComposer({
 
     try {
       setIsSavingDraft(true);
+      setIsInternallySavingDraft(true);
       const draftData = {
         to: values.to.join(', '),
         cc: values.cc?.join(', '),
@@ -390,9 +409,13 @@ export function EmailComposer({
       toast.error('Failed to save draft');
       setIsSavingDraft(false);
       setHasUnsavedChanges(false);
+      setIsInternallySavingDraft(false);
     } finally {
       setIsSavingDraft(false);
       setHasUnsavedChanges(false);
+      setTimeout(() => {
+        setIsInternallySavingDraft(false);
+      }, 100);
     }
   };
 
@@ -404,10 +427,10 @@ export function EmailComposer({
   };
 
   useEffect(() => {
-    if (urlDraftId !== draftId) {
+    if (!isInternallySavingDraft && urlDraftId !== draftId) {
       setDraftId(urlDraftId ?? null);
     }
-  }, [urlDraftId]);
+  }, [urlDraftId, isInternallySavingDraft]);
 
   useEffect(() => {
     if (!hasUnsavedChanges) return;
