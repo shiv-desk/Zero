@@ -15,8 +15,8 @@ export const aiRouter = new Hono();
 
 aiRouter.get('/', (c) => c.text('Twilio + ElevenLabs + AI Phone System Ready'));
 
-aiRouter.post('/chat/:connectionId', async (c) => {
-  const connectionId = c.req.param('connectionId');
+aiRouter.post('/chat', async (c) => {
+  const connectionId = c.req.header('X-Connection-Id');
 
   if (!connectionId) {
     return c.text('Missing connectionId', 400);
