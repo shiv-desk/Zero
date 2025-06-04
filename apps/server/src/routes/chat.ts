@@ -126,8 +126,6 @@ export class ZeroAgent extends AIChatAgent<typeof env> {
     const chatHistory = this.messages;
     console.log('chatHistory', chatHistory);
 
-    const toolSet = { ...authTools(driver, this.name), buildGmailSearchQuery };
-
     // Generate a response stream
     const { text } = await generateText({
       model: openai('gpt-4o'),
