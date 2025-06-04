@@ -15,6 +15,7 @@ import {
   Lightning,
   Mail,
   ScanEye,
+  Search,
   Star2,
   Tag,
   Trash,
@@ -529,14 +530,15 @@ export function MailLayout() {
                 <Button
                   variant="outline"
                   className={cn(
-                    'text-muted-foreground relative flex h-9 w-full select-none items-center justify-start overflow-hidden rounded-[0.5rem] border bg-white text-left text-sm font-normal shadow-none ring-0 focus-visible:ring-0 focus-visible:ring-offset-0 dark:bg-[#141414]',
+                    'text-muted-foreground relative flex h-8 w-full select-none items-center justify-start overflow-hidden rounded-[0.5rem] border bg-white text-left text-sm font-normal shadow-none ring-0 focus-visible:ring-0 pl-2 focus-visible:ring-offset-0 dark:bg-[#141414] dark:border-none rounded-lg',
                   )}
                   onClick={() => setOpen(!open)}
                 >
-                  <span className="hidden truncate pr-20 lg:inline-block">
+                  <Search className='dark:fill-[#6F6F6F] fill-[#71717A]' />
+                  <span className="hidden truncate pr-20 lg:inline-block dark:text-[#727272]">
                     {activeFilters.length > 0
                       ? activeFilters.map((f) => f.display).join(', ')
-                      : 'Search & Filters'}
+                      : 'Search & Filter'}
                   </span>
                   <span className="inline-block truncate pr-20 lg:hidden">
                     {activeFilters.length > 0
@@ -544,7 +546,7 @@ export function MailLayout() {
                       : 'Search...'}
                   </span>
 
-                  <span className="absolute right-[0.45rem] top-[0.45rem] flex gap-1">
+                  <span className="absolute right-[0.1rem] flex gap-1">
                     {/* {activeFilters.length > 0 && (
                       <Badge variant="secondary" className="ml-2 h-5 rounded px-1">
                         {activeFilters.length}
@@ -554,7 +556,7 @@ export function MailLayout() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-5 rounded px-1.5 text-xs"
+                        className="h-5 rounded-xl px-1.5 text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
                           clearAllFilters();
@@ -563,8 +565,8 @@ export function MailLayout() {
                         Clear
                       </Button>
                     )}
-                    <kbd className="bg-muted pointer-events-none hidden h-5 select-none items-center gap-1 rounded border px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
-                      <span className="text-sm">⌘</span> K
+                    <kbd className="bg-muted dark:bg-[#262626] pointer-events-none hidden h-7 select-none items-center gap-0.5 rounded-md border-none px-2 text-md font-medium opacity-100 sm:flex dark:text-[#929292]">
+                      <span className="text-xl">⌘</span> K
                     </kbd>
                   </span>
                 </Button>
