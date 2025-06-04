@@ -33,6 +33,10 @@
             "class_name": "DurableMailbox",
             "name": "DURABLE_MAILBOX",
           },
+          {
+            "name": "ZERO_CALL_AGENT",
+            "class_name": "ZeroCallAgent"
+          },
         ],
       },
       "migrations": [

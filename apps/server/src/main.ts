@@ -1,3 +1,5 @@
+export { ZeroCallAgent } from './services/call-service/zero-call-agent';
+
 import { env, WorkerEntrypoint } from 'cloudflare:workers';
 import { contextStorage } from 'hono/context-storage';
 import { ZeroMCP } from './services/mcp-service/mcp';
