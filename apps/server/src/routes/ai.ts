@@ -1,14 +1,26 @@
 import { CallService } from '../services/call-service/call-service';
-import { getAgentByName, routeAgentRequest } from 'agents';
 import { ZeroMCP } from '../services/mcp-service/mcp';
 import { env } from 'cloudflare:workers';
 import type { ZeroAgent } from '../main';
+import { getAgentByName } from 'agents';
 import twilio from 'twilio';
 import { Hono } from 'hono';
 
-export const aiRouter = new Hono();
+export const aiRouter = new Hono<{ Bindings: ZeroAgent }>();
 
 aiRouter.get('/', (c) => c.text('Twilio + ElevenLabs + AI Phone System Ready'));
+
+aiRouter.post('/chat/:connectionId', async (c) => {
+  const connectionId = c.req.param('connectionId');
+
+  if (!connectionId) {
+    return c.text('Missing connectionId', 400);
+  }
+
+  const stub = await getAgentByName<Env, ZeroAgent>(env.ZERO_AGENT, connectionId);
+
+  return stub.fetch(c.req.raw);
+});
 
 aiRouter.mount(
   '/mcp',
@@ -26,20 +38,6 @@ aiRouter.mount(
   },
   { replaceRequest: false },
 );
-
-aiRouter.post('/chat/:userId', async (c) => {
-  const userId = c.req.param('userId');
-
-  if (!userId) {
-    return c.text('Missing userId', 400);
-  }
-
-  // Retrieve a stub to the specific ZeroAgent instance
-  const stub = await getAgentByName<Env, ZeroAgent>(env.ZERO_AGENT, userId);
-
-  // Forward the incoming request body straight to the Agent
-  return await stub.fetch(c.req.raw);
-});
 
 aiRouter.post('/voice', async (c) => {
   const formData = await c.req.formData();
