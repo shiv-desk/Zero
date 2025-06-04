@@ -3,7 +3,7 @@ import type { ZeroAgent } from '../main';
 import { getAgentByName } from 'agents';
 import { Hono } from 'hono';
 
-export const aiRouter = new Hono<{ Bindings: ZeroAgent }>();
+export const aiRouter = new Hono();
 
 aiRouter.get('/', (c) => c.text('Twilio + ElevenLabs + AI Phone System Ready'));
 
