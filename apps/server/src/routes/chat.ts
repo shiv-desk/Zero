@@ -11,21 +11,19 @@ import {
   getCurrentDateContext,
   GmailSearchAssistantSystemPrompt,
 } from '../lib/prompts';
-import { systemPrompt } from '../services/call-service/system-prompt';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createSimpleAuth, type SimpleAuth } from '../lib/auth';
-import { tools as authTools, tools } from './agent/tools';
 import { connectionToDriver } from '../lib/server-utils';
 import type { MailManager } from '../lib/driver/types';
 import { FOLDERS, parseHeaders } from '../lib/utils';
 import { AIChatAgent } from 'agents/ai-chat-agent';
+import { tools as authTools } from './agent/tools';
 import { processToolCalls } from './agent/utils';
 import { connection } from '../db/schema';
 import { env } from 'cloudflare:workers';
 import { openai } from '@ai-sdk/openai';
 import { McpAgent } from 'agents/mcp';
 import { eq } from 'drizzle-orm';
-import { Tools } from '../types';
 import { createDb } from '../db';
 import { z } from 'zod';
 
