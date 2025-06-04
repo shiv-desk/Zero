@@ -59,21 +59,18 @@ const api = new Hono<HonoContext>()
   .route('/ai', aiRouter)
   .route('/autumn', autumnApi)
   .on(['GET', 'POST'], '/auth/*', (c) => c.var.auth.handler(c.req.raw))
-  .route(
-    '/trpc',
-    new Hono().use(
-      trpcServer({
-        endpoint: '/api/trpc',
-        router: appRouter,
-        createContext: (_, c) => {
-          return { c, sessionUser: c.var['sessionUser'], db: c.var['db'] };
-        },
-        allowMethodOverride: true,
-        onError: (opts) => {
-          console.error('Error in TRPC handler:', opts.error);
-        },
-      }),
-    ),
+  .use(
+    trpcServer({
+      endpoint: '/api/trpc',
+      router: appRouter,
+      createContext: (_, c) => {
+        return { c, sessionUser: c.var['sessionUser'], db: c.var['db'] };
+      },
+      allowMethodOverride: true,
+      onError: (opts) => {
+        console.error('Error in TRPC handler:', opts.error);
+      },
+    }),
   )
   .onError(async (err, c) => {
     if (err instanceof Response) return err;
