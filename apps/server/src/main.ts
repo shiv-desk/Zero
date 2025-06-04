@@ -1,5 +1,3 @@
-import { createDb } from './db';
-
 import { env, WorkerEntrypoint } from 'cloudflare:workers';
 import { contextStorage } from 'hono/context-storage';
 import { ZeroMCP } from './services/mcp-service/mcp';
@@ -16,6 +14,7 @@ import { aiRouter } from './routes/ai';
 import { Autumn } from 'autumn-js';
 import { appRouter } from './trpc';
 import { cors } from 'hono/cors';
+import { createDb } from './db';
 import { Hono } from 'hono';
 
 const api = new Hono<HonoContext>()
