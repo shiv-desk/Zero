@@ -23,7 +23,6 @@ import { processToolCalls } from './agent/utils';
 import { connection } from '../db/schema';
 import { env } from 'cloudflare:workers';
 import { openai } from '@ai-sdk/openai';
-import { google } from '@ai-sdk/google';
 import { McpAgent } from 'agents/mcp';
 import { eq } from 'drizzle-orm';
 import { Tools } from '../types';
@@ -98,11 +97,8 @@ export class ZeroAgent extends AIChatAgent<typeof env> {
 
   async onRequest(request: Request) {
     console.log('name', this.name);
-    const { messages } = (await request.json()) as {
-      messages: {
-        role: 'user' | 'assistant';
-        content: string;
-      }[];
+    const { query } = (await request.json()) as {
+      query: string;
     };
 
     await this.setupAuth();
@@ -122,20 +118,10 @@ export class ZeroAgent extends AIChatAgent<typeof env> {
 
     const driver = connectionToDriver(activeConnection);
 
-    // Get the current conversation history
-    const chatHistory = this.messages;
-    console.log('chatHistory', chatHistory);
-
-    // Generate a response stream
     const { text } = await generateText({
       model: openai('gpt-4o'),
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt,
-        },
-        ...messages,
-      ],
+      system: systemPrompt,
+      prompt: query,
       tools: {
         buildGmailSearchQuery: tool({
           description: 'Build a Gmail search query',
