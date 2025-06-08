@@ -3,17 +3,9 @@ import { OnboardingWrapper } from '@/components/onboarding';
 import { VoiceProvider } from '@/providers/voice-provider';
 import { NotificationProvider } from '@/components/party';
 import { AppSidebar } from '@/components/ui/app-sidebar';
-import { Outlet, useLoaderData } from 'react-router';
-import type { Route } from './+types/layout';
-
-export async function loader({ request }: Route.LoaderArgs) {
-  return {
-    headers: Object.fromEntries(request.headers.entries()),
-  };
-}
+import { Outlet } from 'react-router';
 
 export default function MailLayout() {
-  const { headers } = useLoaderData<typeof loader>();
   return (
     // <VoiceProvider>
     <HotkeyProviderWrapper>
@@ -22,7 +14,7 @@ export default function MailLayout() {
         <Outlet />
       </div>
       <OnboardingWrapper />
-      <NotificationProvider headers={headers} />
+      <NotificationProvider />
     </HotkeyProviderWrapper>
     // </VoiceProvider>
   );

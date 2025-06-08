@@ -13,11 +13,11 @@ import {
   GmailSearchAssistantSystemPrompt,
 } from '../lib/prompts';
 import { type Connection, type ConnectionContext, type WSMessage } from 'agents';
+import { defaultPageSize, FOLDERS, parseHeaders } from '../lib/utils';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { createSimpleAuth, type SimpleAuth } from '../lib/auth';
 import { connectionToDriver } from '../lib/server-utils';
 import type { MailManager } from '../lib/driver/types';
-import { FOLDERS, parseHeaders } from '../lib/utils';
 import { AIChatAgent } from 'agents/ai-chat-agent';
 import { tools as authTools } from './agent/tools';
 import { processToolCalls } from './agent/utils';
@@ -207,6 +207,7 @@ export class ZeroAgent extends AIChatAgent<typeof env> {
   }
 
   async onMessage(connection: Connection, message: WSMessage) {
+    console.log('onMessage', message);
     if (typeof message === 'string') {
       let data: IncomingMessage;
       try {
@@ -288,14 +289,20 @@ export class ZeroAgent extends AIChatAgent<typeof env> {
           break;
         }
         case IncomingMessageType.Mail_List: {
+          console.log('data', data);
+          if (!this.driver) {
+            await this.setupAuth();
+          }
           if (!this.driver) {
             throw new Error('Unauthorized no driver');
           }
           const result = await this.driver.list({
             folder: data.folder,
             query: data.query,
-            maxResults: data.maxResults,
+            maxResults: data.maxResults ?? defaultPageSize,
+            pageToken: data.pageToken,
           });
+          console.log('result', result);
           connection.send(
             JSON.stringify({
               type: OutgoingMessageType.Mail_List,

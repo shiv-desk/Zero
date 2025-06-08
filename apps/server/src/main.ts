@@ -145,12 +145,12 @@ const app = new Hono<HonoContext>()
 
 export default class extends WorkerEntrypoint<typeof env> {
   async fetch(request: Request): Promise<Response> {
-    if (request.url.includes('/zero/durable-mailbox')) {
-      const res = await routePartykitRequest(request, env as unknown as Record<string, unknown>, {
-        prefix: 'zero',
-      });
-      if (res) return res;
-    }
+    // if (request.url.includes('/zero/durable-mailbox')) {
+    //   const res = await routePartykitRequest(request, env as unknown as Record<string, unknown>, {
+    //     prefix: 'zero',
+    //   });
+    //   if (res) return res;
+    // }
     return app.fetch(request, this.env, this.ctx);
   }
 

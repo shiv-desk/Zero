@@ -1,9 +1,10 @@
 import { backgroundQueueAtom, isThreadInBackgroundQueueAtom } from '@/store/backgroundQueue';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchValue } from '@/hooks/use-search-value';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { useTRPC } from '@/providers/query-provider';
+import { sendMessageAtom, socketAtom } from '@/lib/state/socket';
 import { useSession } from '@/lib/auth-client';
-import { useAtom, useAtomValue } from 'jotai';
 import { usePrevious } from './use-previous';
 import { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router';
@@ -12,28 +13,42 @@ import { useQueryState } from 'nuqs';
 export const useThreads = () => {
   const { folder } = useParams<{ folder: string }>();
   const [searchValue] = useSearchValue();
-  const { data: session } = useSession();
   const [backgroundQueue] = useAtom(backgroundQueueAtom);
   const isInQueue = useAtomValue(isThreadInBackgroundQueueAtom);
-  const trpc = useTRPC();
 
-  const threadsQuery = useInfiniteQuery(
-    trpc.mail.listThreads.infiniteQueryOptions(
-      {
-        q: searchValue.value,
-        folder,
-      },
-      {
-        initialCursor: '',
-        getNextPageParam: (lastPage) => lastPage?.nextPageToken ?? null,
-        staleTime: 60 * 1000 * 60, // 1 minute
-        refetchOnMount: true,
-        refetchIntervalInBackground: true,
-      },
-    ),
-  );
+  const threadsQuery = useInfiniteQuery<{
+    nextPageToken: string;
+    threads: {
+      id: string;
+    }[];
+  }>({
+    queryKey: ['listThreads', folder, searchValue.value],
+    queryFn: async ({ client, queryKey }) => {
+      const data = client.getQueryData<{
+        pages: {
+          nextPageToken: string;
+          threads: {
+            id: string;
+          }[];
+        }[];
+        pageParams: string[];
+      }>(queryKey);
 
-  // Flatten threads from all pages and sort by receivedOn date (newest first)
+      const threads = data?.pages
+        ? data.pages
+            .flatMap((e) => e.threads)
+            .filter(Boolean)
+            .filter((e) => !isInQueue(`thread:${e.id}`))
+        : [];
+
+      return {
+        nextPageToken: data?.pages[data.pages.length - 1]?.nextPageToken || '',
+        threads,
+      };
+    },
+    initialPageParam: '',
+    getNextPageParam: (lastPage) => lastPage.nextPageToken || undefined,
+  });
 
   const threads = useMemo(() => {
     return threadsQuery.data
@@ -49,10 +64,21 @@ export const useThreads = () => {
     isEmpty ||
     (threadsQuery.data &&
       !threadsQuery.data.pages[threadsQuery.data.pages.length - 1]?.nextPageToken);
+  const sendMessage = useSetAtom(sendMessageAtom);
 
-  const loadMore = async () => {
+  const loadMore = () => {
     if (threadsQuery.isLoading || threadsQuery.isFetching) return;
-    await threadsQuery.fetchNextPage();
+    if (threadsQuery.hasNextPage && !threadsQuery.isFetchingNextPage) {
+      const nextPageToken =
+        threadsQuery.data?.pages[threadsQuery.data.pages.length - 1]?.nextPageToken;
+      sendMessage({
+        type: 'zero_mail_list_threads',
+        folder,
+        query: searchValue.value,
+        pageToken: nextPageToken ?? '',
+      });
+      threadsQuery.fetchNextPage();
+    }
   };
 
   return [threadsQuery, threads, isReachingEnd, loadMore] as const;
@@ -63,6 +89,8 @@ export const useThread = (threadId: string | null, historyId?: string | null) =>
   const [_threadId] = useQueryState('threadId');
   const id = threadId ? threadId : _threadId;
   const trpc = useTRPC();
+  const socket = useAtomValue(socketAtom);
+  const sendMessage = useSetAtom(sendMessageAtom);
 
   const previousHistoryId = usePrevious(historyId ?? null);
   const queryClient = useQueryClient();
@@ -71,6 +99,40 @@ export const useThread = (threadId: string | null, historyId?: string | null) =>
     if (!historyId || !previousHistoryId || historyId === previousHistoryId) return;
     queryClient.invalidateQueries({ queryKey: trpc.mail.get.queryKey({ id: id! }) });
   }, [historyId, previousHistoryId, id]);
+
+  useEffect(() => {
+    if (!socket || !id) return;
+
+    const handleMessage = async (event: MessageEvent<string>) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.type === 'zero_mail_get_thread' && data.threadId === id) {
+          queryClient.setQueryData(
+            trpc.mail.get.queryKey({ id }),
+            data.result
+          );
+        }
+      } catch (error) {
+        console.error('Error parsing thread message', error);
+      }
+    };
+
+    socket.addEventListener('message', handleMessage);
+    
+    return () => {
+      socket.removeEventListener('message', handleMessage);
+    };
+  }, [socket, id, queryClient, trpc.mail.get]);
+
+  useEffect(() => {
+    if (id && session?.user.id) {
+      sendMessage({
+        type: 'zero_mail_get_thread',
+        threadId: id,
+      });
+    }
+  }, [id, sendMessage, session?.user.id]);
 
   const threadQuery = useQuery(
     trpc.mail.get.queryOptions(
