@@ -34,6 +34,8 @@ export default [
   layout('(routes)/layout.tsx', [
     route('/developer', '(routes)/developer/page.tsx'),
     route('/toast-test', '(routes)/toast-test.tsx'),
+    // TODO: DELETE ONCE DONE
+    route('/test-contacts', '(routes)/test-contacts.tsx'),
     layout(
       '(routes)/mail/layout.tsx',
       prefix('/mail', [

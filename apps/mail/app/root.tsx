@@ -63,7 +63,7 @@ export function Layout({ children }: PropsWithChildren) {
         <meta name="theme-color" content="#141414" media="(prefers-color-scheme: dark)" />
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
         <Meta />
-        {import.meta.env.REACT_SCAN && (
+        {import.meta.env.VITE_PUBLIC_REACT_SCAN && (
           <script crossOrigin="anonymous" src="//unpkg.com/react-scan/dist/auto.global.js" />
         )}
         <Links />

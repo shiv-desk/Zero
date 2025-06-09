@@ -42,6 +42,7 @@ export class GoogleMailManager implements MailManager {
       'https://www.googleapis.com/auth/gmail.modify',
       'https://www.googleapis.com/auth/userinfo.profile',
       'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/contacts.readonly',
     ].join(' ');
   }
   public getAttachment(messageId: string, attachmentId: string) {
@@ -160,6 +161,22 @@ export class GoogleMailManager implements MailManager {
       },
       { code },
     );
+  }
+  public getUsersContacts() {
+    return this.withErrorHandler('getUsersContacts', async () => {
+      const res = await people({ version: 'v1', auth: this.auth }).people.connections.list({
+        resourceName: 'people/me',
+        personFields: 'names,photos,emailAddresses,phoneNumbers',
+      });
+      return (
+        res.data.connections?.map((connection) => ({
+          name: connection.names?.[0]?.displayName ?? '',
+          email: connection.emailAddresses?.[0]?.value ?? '',
+          photo: connection.photos?.[0]?.url ?? '',
+          phone: connection.phoneNumbers?.[0]?.value ?? '',
+        })) ?? []
+      );
+    });
   }
   public count() {
     return this.withErrorHandler(
@@ -732,13 +749,14 @@ export class GoogleMailManager implements MailManager {
         });
         // Process res.data.messages to extract id and labelIds
         return {
-          messages: res.data.messages?.map(msg => ({
-            id: msg.id,
-            labelIds: msg.labelIds
-          })) || []
+          messages:
+            res.data.messages?.map((msg) => ({
+              id: msg.id,
+              labelIds: msg.labelIds,
+            })) || [],
         };
       },
-      { threadId, email: this.config.auth?.email }
+      { threadId, email: this.config.auth?.email },
     );
   }
 

@@ -61,6 +61,7 @@ export interface MailManager {
     nextPageToken: string | null;
   }>;
   count(): Promise<{ count?: number; label?: string }[]>;
+  getUsersContacts(): Promise<{ name?: string; email?: string; photo?: string; phone?: string }[]>;
   getTokens(
     code: string,
   ): Promise<{ tokens: { access_token?: string; refresh_token?: string; expiry_date?: number } }>;

@@ -1,7 +1,7 @@
 import { activeDriverProcedure, createRateLimiterMiddleware, router } from '../trpc';
 import { updateWritingStyleMatrix } from '../../services/writing-style-service';
 import { deserializeFiles, serializedFileSchema } from '../../lib/schemas';
-import { defaultPageSize, FOLDERS, LABELS } from '../../lib/utils';
+import { defaultPageSize, FOLDERS } from '../../lib/utils';
 import type { DeleteAllSpamResponse } from '../../types';
 import { Ratelimit } from '@upstash/ratelimit';
 import { z } from 'zod';
@@ -342,4 +342,126 @@ export const mailRouter = router({
     const { driver } = ctx;
     return driver.getEmailAliases();
   }),
+  getUsersContacts: activeDriverProcedure.query(async ({ ctx }) => {
+    const { driver } = ctx;
+    return driver.getUsersContacts();
+  }),
+  getAllEmailContacts: activeDriverProcedure
+    // .use(
+    //   createRateLimiterMiddleware({
+    //     generatePrefix: ({ sessionUser }) => `ratelimit:get-all-email-contacts-${sessionUser?.id}`,
+    //     limiter: Ratelimit.slidingWindow(5, '5m'),
+    //   }),
+    // )
+    .query(async ({ ctx }) => {
+      const { driver } = ctx;
+      const contactsMap = new Map<string, { name: string; email: string }>();
+
+      const cleanContactName = (name: string, email: string): string => {
+        const cleanedName = name.replace(/<[^>]+>/, '').trim();
+
+        if (!cleanedName || cleanedName === email) {
+          return email;
+        }
+
+        return cleanedName;
+      };
+
+      try {
+        const labelsData = await driver.count();
+        const labels = labelsData
+          .map((item) => item.label)
+          .filter((label): label is string => label !== undefined && label !== null);
+
+        const foldersToScan = ['inbox', 'sent', 'archive', 'spam', 'trash', ...labels];
+
+        for (const folder of foldersToScan) {
+          let pageToken: string | null = null;
+          let hasMore = true;
+          const isSentFolder = folder.toLowerCase() === 'sent';
+
+          while (hasMore) {
+            try {
+              const threadsResponse = await driver.list({
+                folder,
+                maxResults: 50,
+                ...(pageToken ? { pageToken } : {}),
+              });
+
+              for (const thread of threadsResponse.threads) {
+                try {
+                  const threadDetails = await driver.get(thread.id);
+
+                  for (const message of threadDetails.messages) {
+                    if (!isSentFolder && message.sender?.email) {
+                      const email = message.sender.email.toLowerCase();
+                      if (!contactsMap.has(email)) {
+                        contactsMap.set(email, {
+                          name: cleanContactName(
+                            message.sender.name || message.sender.email,
+                            message.sender.email,
+                          ),
+                          email: message.sender.email,
+                        });
+                      }
+                    }
+
+                    if (message.to) {
+                      for (const recipient of message.to) {
+                        const email = recipient.email.toLowerCase();
+                        if (!contactsMap.has(email)) {
+                          contactsMap.set(email, {
+                            name: cleanContactName(
+                              recipient.name || recipient.email,
+                              recipient.email,
+                            ),
+                            email: recipient.email,
+                          });
+                        }
+                      }
+                    }
+
+                    if (message.cc) {
+                      for (const recipient of message.cc) {
+                        const email = recipient.email.toLowerCase();
+                        if (!contactsMap.has(email)) {
+                          contactsMap.set(email, {
+                            name: cleanContactName(
+                              recipient.name || recipient.email,
+                              recipient.email,
+                            ),
+                            email: recipient.email,
+                          });
+                        }
+                      }
+                    }
+                  }
+                } catch (error) {
+                  console.warn(`Failed to process thread ${thread.id}:`, error);
+                }
+              }
+
+              pageToken = threadsResponse.nextPageToken;
+              hasMore = !!pageToken;
+
+              if (hasMore) {
+                await new Promise((resolve) => setTimeout(resolve, 100));
+              }
+            } catch (error) {
+              console.warn(`Failed to process folder ${folder}:`, error);
+              break;
+            }
+          }
+        }
+
+        const contacts = Array.from(contactsMap.values()).sort((a, b) =>
+          a.name.localeCompare(b.name),
+        );
+
+        return contacts;
+      } catch (error) {
+        console.error('Failed to get all email contacts:', error);
+        throw new Error('Failed to retrieve email contacts');
+      }
+    }),
 });
