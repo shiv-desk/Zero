@@ -13,7 +13,7 @@ import { AddConnectionDialog } from '@/components/connection/add';
 import { PricingDialog } from '@/components/ui/pricing-dialog';
 import { useSession, authClient } from '@/lib/auth-client';
 import { useConnections } from '@/hooks/use-connections';
-import { useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMutation } from '@tanstack/react-query';
 import { Trash, Plus, Unplug } from 'lucide-react';
@@ -32,8 +32,15 @@ export default function ConnectionsPage() {
   const { refetch } = useSession();
   const [openTooltip, setOpenTooltip] = useState<string | null>(null);
   const t = useTranslations();
-  const trpc = useTRPC();
-  const { mutateAsync: deleteConnection } = useMutation(trpc.connections.delete.mutationOptions());
+  const { sendAction } = useWebSocketMail();
+  const { mutateAsync: deleteConnection } = useMutation({
+    mutationFn: async ({ connectionId }: { connectionId: string }) => {
+      return await sendAction({
+        type: 'zero_mail_delete_connection',
+        connectionId,
+      });
+    },
+  });
   const [{ refetch: refetchThreads }] = useThreads();
   const { isPro } = useBilling();
   const [, setPricingDialog] = useQueryState('pricingDialog');

@@ -22,7 +22,7 @@ import { userSettingsSchema } from '@zero/server/schemas';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations, useLocale } from 'use-intl';
-import { useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { getBrowserTimezone } from '@/lib/timezones';
 import { Textarea } from '@/components/ui/textarea';
 import { useSettings } from '@/hooks/use-settings';
@@ -118,12 +118,24 @@ export default function GeneralPage() {
   const locale = useLocale();
   const t = useTranslations();
   const { data } = useSettings();
-  const trpc = useTRPC();
+  const { sendAction } = useWebSocketMail();
   const queryClient = useQueryClient();
-  const { mutateAsync: saveUserSettings } = useMutation(trpc.settings.save.mutationOptions());
-  const { mutateAsync: setLocaleCookie } = useMutation(
-    trpc.cookiePreferences.setLocaleCookie.mutationOptions(),
-  );
+  const { mutateAsync: saveUserSettings } = useMutation({
+    mutationFn: async (values: any) => {
+      return await sendAction({
+        type: 'zero_mail_save_settings',
+        settings: values,
+      });
+    },
+  });
+  const { mutateAsync: setLocaleCookie } = useMutation({
+    mutationFn: async (data: any) => {
+      return await sendAction({
+        type: 'zero_mail_set_locale_cookie',
+        locale: data.locale,
+      });
+    },
+  });
   const { revalidate } = useRevalidator();
 
   const form = useForm<z.infer<typeof userSettingsSchema>>({
@@ -148,7 +160,7 @@ export default function GeneralPage() {
     const saved = data?.settings ? { ...data.settings } : undefined;
     try {
       await saveUserSettings(values);
-      queryClient.setQueryData(trpc.settings.get.queryKey(), (updater) => {
+      queryClient.setQueryData(['user-settings'], (updater) => {
         if (!updater) return;
         return { settings: { ...updater.settings, ...values } };
       });
@@ -165,7 +177,7 @@ export default function GeneralPage() {
       console.error('Failed to save settings:', error);
       toast.error(t('common.settings.failedToSave'));
       // Revert the optimistic update
-      queryClient.setQueryData(trpc.settings.get.queryKey(), (updater) => {
+      queryClient.setQueryData(['user-settings'], (updater) => {
         if (!updater) return;
         return saved ? { settings: { ...updater.settings, ...saved } } : updater;
       });

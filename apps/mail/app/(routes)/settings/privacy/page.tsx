@@ -11,8 +11,7 @@ import { SettingsCard } from '@/components/settings/settings-card';
 import { userSettingsSchema } from '@zero/server/schemas';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTRPC } from '@/providers/query-provider';
-import { useMutation } from '@tanstack/react-query';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 // import { saveUserSettings } from '@/actions/settings';
 import { useSettings } from '@/hooks/use-settings';
 import { Button } from '@/components/ui/button';
@@ -28,8 +27,7 @@ export default function PrivacyPage() {
   const [isSaving, setIsSaving] = useState(false);
   const t = useTranslations();
   const { data, refetch } = useSettings();
-  const trpc = useTRPC();
-  const { mutateAsync: saveUserSettings } = useMutation(trpc.settings.save.mutationOptions());
+  const { sendAction } = useWebSocketMail();
 
   const form = useForm<z.infer<typeof userSettingsSchema>>({
     resolver: zodResolver(userSettingsSchema),
@@ -51,9 +49,12 @@ export default function PrivacyPage() {
     if (data) {
       setIsSaving(true);
       toast.promise(
-        saveUserSettings({
-          ...data.settings,
-          ...values,
+        sendAction({
+          type: 'zero_mail_save_settings',
+          settings: {
+            ...data.settings,
+            ...values,
+          },
         }),
         {
           success: t('common.settings.saved'),

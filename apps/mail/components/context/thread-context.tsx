@@ -27,8 +27,8 @@ import { useOptimisticActions } from '@/hooks/use-optimistic-actions';
 import { type ThreadDestination } from '@/lib/thread-actions';
 import { useThread, useThreads } from '@/hooks/use-threads';
 import { ExclamationCircle, Mail } from '../icons/icons';
-import { useTRPC } from '@/providers/query-provider';
-import { useMutation } from '@tanstack/react-query';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
+
 import { useMemo, type ReactNode } from 'react';
 import { useLabels } from '@/hooks/use-labels';
 import { FOLDERS, LABELS } from '@/lib/utils';
@@ -63,20 +63,24 @@ const LabelsList = ({ threadId }: { threadId: string }) => {
   const { data: labels } = useLabels();
   const { data: thread, refetch } = useThread(threadId);
   const t = useTranslations();
-  const trpc = useTRPC();
-  const { mutateAsync: modifyLabels } = useMutation(trpc.mail.modifyLabels.mutationOptions());
+  const { sendAction } = useWebSocketMail();
 
   if (!labels || !thread) return null;
 
   const handleToggleLabel = async (labelId: string) => {
     if (!labelId) return;
     const hasLabel = thread.labels?.map((label) => label.id).includes(labelId);
-    const promise = modifyLabels({
-      threadId: [threadId],
-      addLabels: hasLabel ? [] : [labelId],
-      removeLabels: hasLabel ? [labelId] : [],
+    
+    sendAction({
+      type: 'zero_mail_modify_labels',
+      threadIds: [threadId],
+      addLabelIds: hasLabel ? [] : [labelId],
+      removeLabelIds: hasLabel ? [labelId] : [],
     });
-    toast.promise(promise, {
+    
+    toast.promise(Promise.resolve(), {
+      loading: 'Updating labels...',
+      success: 'Labels updated',
       error: hasLabel ? 'Failed to remove label' : 'Failed to add label',
       finally: async () => {
         await refetch();

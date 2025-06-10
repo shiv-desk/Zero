@@ -26,7 +26,7 @@ import { useOptimisticThreadState } from '@/components/mail/optimistic-thread-st
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useOptimisticActions } from '@/hooks/use-optimistic-actions';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { focusedIndexAtom } from '@/hooks/use-mail-navigation';
 import { backgroundQueueAtom } from '@/store/backgroundQueue';
 import { type ThreadDestination } from '@/lib/thread-actions';
@@ -36,7 +36,7 @@ import { useAISidebar } from '@/components/ui/ai-sidebar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ParsedMessage, Attachment } from '@/types';
 import { MailDisplaySkeleton } from './mail-skeleton';
-import { useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
 import { useStats } from '@/hooks/use-stats';
@@ -188,8 +188,7 @@ export function ThreadDisplay() {
   const [, setDraftId] = useQueryState('draftId');
   const { resolvedTheme } = useTheme();
   const [focusedIndex, setFocusedIndex] = useAtom(focusedIndexAtom);
-  const trpc = useTRPC();
-  const { mutateAsync: toggleImportant } = useMutation(trpc.mail.toggleImportant.mutationOptions());
+  const { sendAction } = useWebSocketMail();
   const [, setIsComposeOpen] = useQueryState('isComposeOpen');
 
   // Get optimistic state for this thread
@@ -650,14 +649,18 @@ export function ThreadDisplay() {
 
   const handleToggleImportant = useCallback(async () => {
     if (!emailData || !id) return;
-    await toggleImportant({ ids: [id] });
+    sendAction({
+      type: 'zero_mail_toggle_important',
+      threadIds: [id],
+      important: !isImportant,
+    });
     await refetchThread();
-    if (isImportant) {
+    if (!isImportant) {
       toast.success(t('common.mail.markedAsImportant'));
     } else {
-      toast.error('Failed to mark as important');
+      toast.success('Removed from important');
     }
-  }, [emailData, id]);
+  }, [emailData, id, isImportant, sendAction]);
 
   // Set initial star state based on email data
   useEffect(() => {

@@ -68,9 +68,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useTranslations, useFormatter } from 'use-intl';
-import { useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { Textarea } from '@/components/ui/textarea';
-import { useMutation } from '@tanstack/react-query';
 import { useThreadNotes } from '@/hooks/use-notes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -260,11 +259,7 @@ export function NotesPanel({ threadId }: NotesPanelProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const t = useTranslations();
-  const trpc = useTRPC();
-  const { mutateAsync: createNote } = useMutation(trpc.notes.create.mutationOptions());
-  const { mutateAsync: updateNote } = useMutation(trpc.notes.update.mutationOptions());
-  const { mutateAsync: deleteNote } = useMutation(trpc.notes.delete.mutationOptions());
-  const { mutateAsync: reorderNotes } = useMutation(trpc.notes.reorder.mutationOptions());
+  const { sendAction } = useWebSocketMail();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -303,7 +298,12 @@ export function NotesPanel({ threadId }: NotesPanelProps) {
 
       const promise = async () => {
         setIsAddingNewNote(true);
-        await createNote(noteData);
+        await sendAction({
+          type: 'zero_mail_create_note',
+          threadId,
+          content: noteData.content,
+          color: noteData.color,
+        });
         await refetch();
         setNewNoteContent('');
         setSelectedColor('default');
@@ -338,11 +338,10 @@ export function NotesPanel({ threadId }: NotesPanelProps) {
       setEditContent('');
 
       const promise = async () => {
-        await updateNote({
+        await sendAction({
+          type: 'zero_mail_update_note',
           noteId,
-          data: {
-            content: contentToSave,
-          },
+          content: contentToSave,
         });
         await refetch();
       };
@@ -362,7 +361,10 @@ export function NotesPanel({ threadId }: NotesPanelProps) {
 
   const handleDeleteNote = async (noteId: string) => {
     try {
-      await deleteNote({ noteId });
+      await sendAction({
+        type: 'zero_mail_delete_note',
+        noteId,
+      });
       await refetch();
     } catch (error) {
       console.error('Failed to delete note:', error);
@@ -386,9 +388,10 @@ export function NotesPanel({ threadId }: NotesPanelProps) {
   };
 
   const togglePinNote = async (noteId: string, isPinned: boolean) => {
-    const action = updateNote({
+    const action = sendAction({
+      type: 'zero_mail_update_note',
       noteId,
-      data: { isPinned: !isPinned },
+      isPinned: !isPinned,
     });
 
     toast.promise(action, {

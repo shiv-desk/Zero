@@ -13,8 +13,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from '../ui/context-menu';
-import { useTRPC } from '@/providers/query-provider';
-import { useMutation } from '@tanstack/react-query';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { useState, type ReactNode } from 'react';
 import { useLabels } from '@/hooks/use-labels';
 import { useTranslations } from 'use-intl';
@@ -40,19 +39,24 @@ interface LabelSidebarContextMenuProps {
 export function LabelSidebarContextMenu({ children, labelId, hide }: LabelSidebarContextMenuProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const t = useTranslations();
-  const trpc = useTRPC();
-  const { mutateAsync: deleteLabel } = useMutation(trpc.labels.delete.mutationOptions());
+  const { sendAction } = useWebSocketMail();
   const { refetch } = useLabels();
 
   const handleDelete = () => {
-    toast.promise(deleteLabel({ id: labelId }), {
-      success: t('common.labels.deleteLabelSuccess'),
-      error: 'Error deleting label',
-      finally: () => {
-        refetch();
-        setDeleteDialogOpen(false);
-      },
-    });
+    toast.promise(
+      Promise.resolve(sendAction({
+        type: 'zero_mail_delete_label',
+        labelId,
+      })),
+      {
+        success: t('common.labels.deleteLabelSuccess'),
+        error: 'Error deleting label',
+        finally: () => {
+          refetch();
+          setDeleteDialogOpen(false);
+        },
+      }
+    );
   };
 
   if (hide) return children;

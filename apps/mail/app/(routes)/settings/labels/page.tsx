@@ -19,8 +19,7 @@ import { LabelDialog } from '@/components/labels/label-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CurvedArrow } from '@/components/icons/icons';
 import { Separator } from '@/components/ui/separator';
-import { useTRPC } from '@/providers/query-provider';
-import { useMutation } from '@tanstack/react-query';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { Check, Plus, Pencil } from 'lucide-react';
 import { type Label as LabelType } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -44,16 +43,37 @@ export default function LabelsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLabel, setEditingLabel] = useState<LabelType | null>(null);
 
-  const trpc = useTRPC();
-  const { mutateAsync: createLabel } = useMutation(trpc.labels.create.mutationOptions());
-  const { mutateAsync: updateLabel } = useMutation(trpc.labels.update.mutationOptions());
-  const { mutateAsync: deleteLabel } = useMutation(trpc.labels.delete.mutationOptions());
+  const { sendAction } = useWebSocketMail();
+  
+  const createLabel = async (data: { name: string; color: any }) => {
+    return await sendAction({
+      type: 'zero_mail_create_label',
+      name: data.name,
+      color: data.color,
+    });
+  };
+  
+  const updateLabel = async (data: { id: string; name: string; color: any }) => {
+    return await sendAction({
+      type: 'zero_mail_update_label',
+      id: data.id,
+      name: data.name,
+      color: data.color,
+    });
+  };
+  
+  const deleteLabel = async (data: { id: string }) => {
+    return await sendAction({
+      type: 'zero_mail_delete_label',
+      id: data.id,
+    });
+  };
 
   const handleSubmit = async (data: LabelType) => {
     await toast.promise(
       editingLabel
         ? updateLabel({ id: editingLabel.id!, name: data.name, color: data.color })
-        : createLabel({ color: data.color, name: data.name }),
+        : createLabel({ name: data.name, color: data.color }),
       {
         loading: 'Saving label...',
         success: 'Label saved successfully',

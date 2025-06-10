@@ -55,7 +55,7 @@ import { getListUnsubscribeAction } from '@/lib/email-utils';
 import AttachmentsAccordion from './attachments-accordion';
 import { cn, getEmailLogo, formatDate } from '@/lib/utils';
 import { useBrainState } from '../../hooks/use-summary';
-import { useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { useThreadLabels } from '@/hooks/use-labels';
 import { useMutation } from '@tanstack/react-query';
 import { Markdown } from '@react-email/components';
@@ -637,13 +637,20 @@ const MoreAboutPerson = ({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const trpc = useTRPC();
+  const { sendAction } = useWebSocketMail();
   const {
     mutate: doSearch,
     isPending,
     data,
     error,
-  } = useMutation(trpc.ai.webSearch.mutationOptions());
+  } = useMutation({
+    mutationFn: async (query: string) => {
+      return await sendAction({
+        type: 'zero_mail_ai_web_search',
+        query,
+      });
+    },
+  });
   const handleSearch = useCallback(() => {
     doSearch({
       query: `In 50 words or less: What is the background of ${person.name} & ${person.email}, of ${person.email.split('@')[1]}. 
@@ -711,13 +718,20 @@ const MoreAboutQuery = ({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const trpc = useTRPC();
+  const { sendAction } = useWebSocketMail();
   const {
     mutate: doSearch,
     isPending,
     data,
     error,
-  } = useMutation(trpc.ai.webSearch.mutationOptions());
+  } = useMutation({
+    mutationFn: async (query: string) => {
+      return await sendAction({
+        type: 'zero_mail_ai_web_search',
+        query,
+      });
+    },
+  });
 
   const handleSearch = useCallback(() => {
     doSearch({

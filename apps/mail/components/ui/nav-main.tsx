@@ -23,7 +23,7 @@ import Intercom, { show } from '@intercom/messenger-js-sdk';
 import { CurvedArrow, MessageSquare, OldPhone, Phone } from '../icons/icons';
 import { useSearchValue } from '@/hooks/use-search-value';
 import { useSidebar } from '../context/sidebar-context';
-import { useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { RecursiveFolder } from './recursive-folder';
 import type { Label as LabelType } from '@/types';
 import { Link, useLocation } from 'react-router';
@@ -80,8 +80,16 @@ export function NavMain({ items }: NavMainProps) {
   const { data: connections } = useConnections();
   const { data: stats } = useStats();
   const { data: activeConnection } = useActiveConnection();
-  const trpc = useTRPC();
-  const { data: intercomToken } = useQuery(trpc.user.getIntercomToken.queryOptions());
+  const { sendMessage } = useWebSocketMail();
+  const { data: intercomToken } = useQuery({
+    queryKey: ['intercom-token'],
+    queryFn: async () => {
+      return await sendMessage({
+        type: 'zero_mail_get_intercom_token',
+      });
+    },
+    staleTime: 1000 * 60 * 60,
+  });
 
   React.useEffect(() => {
     if (intercomToken) {
@@ -92,7 +100,13 @@ export function NavMain({ items }: NavMainProps) {
     }
   }, [intercomToken]);
 
-  const { mutateAsync: createLabel } = useMutation(trpc.labels.create.mutationOptions());
+  const { sendAction } = useWebSocketMail();
+  const createLabel = async (data: LabelType) => {
+    return await sendAction({
+      type: 'zero_mail_create_label',
+      ...data,
+    });
+  };
 
   const { data, refetch } = useLabels();
 

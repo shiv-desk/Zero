@@ -1,14 +1,23 @@
-import { useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from './use-websocket-mail';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
+import { useSession } from '@/lib/auth-client';
 
 export function useLabels() {
-  const trpc = useTRPC();
-  const labelQuery = useQuery(
-    trpc.labels.list.queryOptions(void 0, {
-      staleTime: 1000 * 60 * 60, // 1 hour
-    }),
-  );
+  const { data: session } = useSession();
+  const { sendMessage } = useWebSocketMail();
+  
+  const labelQuery = useQuery({
+    queryKey: ['labels'],
+    queryFn: async () => {
+      return await sendMessage({
+        type: 'zero_mail_get_labels',
+      });
+    },
+    enabled: !!session?.user.id,
+    staleTime: 1000 * 60 * 60,
+  });
+  
   return labelQuery;
 }
 

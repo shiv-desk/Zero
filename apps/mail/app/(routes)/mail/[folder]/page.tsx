@@ -29,9 +29,7 @@ export default function MailPage() {
 
   const isStandardFolder = ALLOWED_FOLDERS.includes(folder);
 
-  const { data: userLabels, isLoading: isLoadingLabels } = useQuery(
-    trpc.labels.list.queryOptions(void 0),
-  );
+  const { data: userLabels, isLoading: isLoadingLabels } = useLabels();
 
   useEffect(() => {
     if (isStandardFolder) {

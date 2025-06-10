@@ -17,15 +17,23 @@ import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/comp
 import { AiChatPrompt, StyledEmailAssistantSystemPrompt } from '@/lib/prompts';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './tabs';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { Button } from '@/components/ui/button';
 import { Paper } from '../icons/icons';
 import { Textarea } from './textarea';
 import { Link } from 'react-router';
 
 export function PromptsDialog() {
-  const trpc = useTRPC();
-  const { data: prompts } = useQuery(trpc.brain.getPrompts.queryOptions());
+  const { sendMessage } = useWebSocketMail();
+  const { data: prompts } = useQuery({
+    queryKey: ['brain-prompts'],
+    queryFn: async () => {
+      return await sendMessage({
+        type: 'zero_mail_get_brain_prompts',
+      });
+    },
+    staleTime: 1000 * 60 * 60,
+  });
   return (
     <TooltipProvider delayDuration={0}>
       <Dialog>

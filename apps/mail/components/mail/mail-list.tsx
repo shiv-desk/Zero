@@ -31,7 +31,7 @@ import { useSearchValue } from '@/hooks/use-search-value';
 import { highlightText } from '@/lib/email-utils.client';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { AnimatePresence, motion } from 'motion/react';
-import { useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { useThreadLabels } from '@/hooks/use-labels';
 import { template } from '@/lib/email-utils.client';
 import { useSettings } from '@/hooks/use-settings';
@@ -615,8 +615,7 @@ export const MailList = memo(
     const [searchValue, setSearchValue] = useSearchValue();
     const [{ refetch, isLoading, isFetching, isFetchingNextPage, hasNextPage }, items, , loadMore] =
       useThreads();
-    const trpc = useTRPC();
-    const isFetchingMail = useIsFetching({ queryKey: trpc.mail.get.queryKey() }) > 0;
+    const isFetchingMail = useIsFetching({ queryKey: ['thread'] }) > 0;
 
     const itemsRef = useRef(items);
     useEffect(() => {

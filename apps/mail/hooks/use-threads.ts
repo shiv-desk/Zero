@@ -1,13 +1,13 @@
 import { backgroundQueueAtom, isThreadInBackgroundQueueAtom } from '@/store/backgroundQueue';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchValue } from '@/hooks/use-search-value';
-import { useTRPC } from '@/providers/query-provider';
 import { useSession } from '@/lib/auth-client';
 import { useAtom, useAtomValue } from 'jotai';
 import { usePrevious } from './use-previous';
 import { useEffect, useMemo } from 'react';
 import { useParams } from 'react-router';
 import { useQueryState } from 'nuqs';
+import { useWebSocketMail } from './use-websocket-mail';
 
 export const useThreads = () => {
   const { folder } = useParams<{ folder: string }>();
@@ -15,25 +15,24 @@ export const useThreads = () => {
   const { data: session } = useSession();
   const [backgroundQueue] = useAtom(backgroundQueueAtom);
   const isInQueue = useAtomValue(isThreadInBackgroundQueueAtom);
-  const trpc = useTRPC();
+  const { sendMessage } = useWebSocketMail();
 
-  const threadsQuery = useInfiniteQuery(
-    trpc.mail.listThreads.infiniteQueryOptions(
-      {
-        q: searchValue.value,
-        folder,
-      },
-      {
-        initialCursor: '',
-        getNextPageParam: (lastPage) => lastPage?.nextPageToken ?? null,
-        staleTime: 60 * 1000 * 60, // 1 minute
-        refetchOnMount: true,
-        refetchIntervalInBackground: true,
-      },
-    ),
-  );
-
-  // Flatten threads from all pages and sort by receivedOn date (newest first)
+  const threadsQuery = useInfiniteQuery({
+    queryKey: ['threads', folder, searchValue.value],
+    queryFn: async ({ pageParam = '' }) => {
+      return await sendMessage({
+        type: 'zero_mail_list_threads',
+        folder: folder || 'inbox',
+        query: searchValue.value || '',
+        maxResults: 50,
+        pageToken: pageParam,
+      });
+    },
+    initialPageParam: '',
+    getNextPageParam: (lastPage) => lastPage?.nextPageToken ?? null,
+    staleTime: 60 * 1000 * 60,
+    enabled: !!session?.user.id,
+  });
 
   const threads = useMemo(() => {
     return threadsQuery.data
@@ -62,27 +61,27 @@ export const useThread = (threadId: string | null, historyId?: string | null) =>
   const { data: session } = useSession();
   const [_threadId] = useQueryState('threadId');
   const id = threadId ? threadId : _threadId;
-  const trpc = useTRPC();
+  const { sendMessage } = useWebSocketMail();
 
   const previousHistoryId = usePrevious(historyId ?? null);
   const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!historyId || !previousHistoryId || historyId === previousHistoryId) return;
-    queryClient.invalidateQueries({ queryKey: trpc.mail.get.queryKey({ id: id! }) });
+    queryClient.invalidateQueries({ queryKey: ['thread', id] });
   }, [historyId, previousHistoryId, id]);
 
-  const threadQuery = useQuery(
-    trpc.mail.get.queryOptions(
-      {
+  const threadQuery = useQuery({
+    queryKey: ['thread', id],
+    queryFn: async () => {
+      return await sendMessage({
+        type: 'zero_mail_get_thread',
         id: id!,
-      },
-      {
-        enabled: !!id && !!session?.user.id,
-        staleTime: 1000 * 60 * 60, // 60 minutes
-      },
-    ),
-  );
+      });
+    },
+    enabled: !!id && !!session?.user.id,
+    staleTime: 1000 * 60 * 60,
+  });
 
   const isGroupThread = useMemo(() => {
     if (!threadQuery.data?.latest?.id) return false;

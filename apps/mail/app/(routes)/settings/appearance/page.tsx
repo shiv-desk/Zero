@@ -16,8 +16,7 @@ import {
 import { SettingsCard } from '@/components/settings/settings-card';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { MessageKey } from '@/config/navigation';
-import { useTRPC } from '@/providers/query-provider';
-import { useMutation } from '@tanstack/react-query';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { useSettings } from '@/hooks/use-settings';
 import { Laptop, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -39,8 +38,7 @@ export default function AppearancePage() {
   const t = useTranslations();
   const { data, refetch } = useSettings();
   const { theme, systemTheme, resolvedTheme, setTheme } = useTheme();
-  const trpc = useTRPC();
-  const { mutateAsync: saveUserSettings } = useMutation(trpc.settings.save.mutationOptions());
+  const { sendAction } = useWebSocketMail();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -74,9 +72,12 @@ export default function AppearancePage() {
     if (data) {
       setIsSaving(true);
       toast.promise(
-        saveUserSettings({
-          ...data.settings,
-          colorTheme: values.colorTheme as Theme,
+        sendAction({
+          type: 'zero_mail_save_settings',
+          settings: {
+            ...data.settings,
+            colorTheme: values.colorTheme as Theme,
+          },
         }),
         {
           success: t('common.settings.saved'),

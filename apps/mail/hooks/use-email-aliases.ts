@@ -1,13 +1,17 @@
-import { useTRPC } from '@/providers/query-provider';
 import { useQuery } from '@tanstack/react-query';
+import { useWebSocketMail } from './use-websocket-mail';
 
 export function useEmailAliases() {
-  const trpc = useTRPC();
-  const emailAliasesQuery = useQuery(
-    trpc.mail.getEmailAliases.queryOptions(void 0, {
-      initialData: [] as { email: string; name: string; primary?: boolean }[],
-      staleTime: 1000 * 60 * 60, // 1 hour
-    }),
-  );
+  const { sendMessage } = useWebSocketMail();
+  const emailAliasesQuery = useQuery({
+    queryKey: ['email-aliases'],
+    queryFn: async () => {
+      return await sendMessage({
+        type: 'zero_mail_get_email_aliases',
+      });
+    },
+    initialData: [] as { email: string; name: string; primary?: boolean }[],
+    staleTime: 1000 * 60 * 60,
+  });
   return emailAliasesQuery;
 }

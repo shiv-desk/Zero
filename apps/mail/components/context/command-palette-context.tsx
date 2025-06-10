@@ -45,9 +45,8 @@ import { useSearchValue } from '@/hooks/use-search-value';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useLocation, useNavigate } from 'react-router';
 import { Separator } from '@/components/ui/separator';
-import { useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { Calendar } from '@/components/ui/calendar';
-import { useMutation } from '@tanstack/react-query';
 import { useThreads } from '@/hooks/use-threads';
 import { useLabels } from '@/hooks/use-labels';
 import { Label } from '@/components/ui/label';
@@ -199,10 +198,7 @@ export function CommandPalette({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const t = useTranslations();
   const { data: userLabels = [] } = useLabels();
-  const trpc = useTRPC();
-  const { mutateAsync: generateSearchQuery, isPending } = useMutation(
-    trpc.ai.generateSearchQuery.mutationOptions(),
-  );
+  const { sendAction } = useWebSocketMail();
 
   useEffect(() => {
     setRecentSearches(getRecentSearches());
@@ -532,7 +528,10 @@ export function CommandPalette({ children }: { children: React.ReactNode }) {
         let finalQuery = query;
 
         if (useNaturalLanguage) {
-          const result = await generateSearchQuery({ query });
+          const result = await sendAction({
+            type: 'zero_mail_generate_search_query',
+            query,
+          });
           finalQuery = result.query;
           toast.info('Search applied', {
             description: finalQuery,
@@ -598,7 +597,7 @@ export function CommandPalette({ children }: { children: React.ReactNode }) {
         setIsProcessing(false);
       }
     },
-    [activeFilters, searchValue.folder, setSearchValue, setOpen, generateSearchQuery, addFilter],
+    [activeFilters, searchValue.folder, setSearchValue, setOpen, sendAction, addFilter],
   );
 
   const quickSearchResults = useMemo(() => {

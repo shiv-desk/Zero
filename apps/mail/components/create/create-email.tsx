@@ -3,9 +3,8 @@ import { Dialog, DialogClose } from '@/components/ui/dialog';
 import { useEmailAliases } from '@/hooks/use-email-aliases';
 import { cleanEmailAddresses } from '@/lib/email-utils';
 import { useHotkeysContext } from 'react-hotkeys-hook';
-import { useTRPC } from '@/providers/query-provider';
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { useSettings } from '@/hooks/use-settings';
 import { EmailComposer } from './email-composer';
 import { useSession } from '@/lib/auth-client';
@@ -66,8 +65,7 @@ export function CreateEmail({
   const navigate = useNavigate();
   const { enableScope, disableScope } = useHotkeysContext();
   const [isDraftFailed, setIsDraftFailed] = useState(false);
-  const trpc = useTRPC();
-  const { mutateAsync: sendEmail } = useMutation(trpc.mail.send.mutationOptions());
+  const { sendMessage } = useWebSocketMail();
   const [isComposeOpen, setIsComposeOpen] = useQueryState('isComposeOpen');
   const { data: activeConnection } = useActiveConnection();
   const { data: settings, isLoading: settingsLoading } = useSettings();
@@ -109,7 +107,8 @@ export function CreateEmail({
       ? '<p style="color: #666; font-size: 12px;">Sent via <a href="https://0.email/" style="color: #0066cc; text-decoration: none;">Zero</a></p>'
       : '';
 
-    await sendEmail({
+    await sendMessage({
+      type: 'zero_mail_send',
       to: data.to.map((email) => ({ email, name: email.split('@')[0] || email })),
       cc: data.cc?.map((email) => ({ email, name: email.split('@')[0] || email })),
       bcc: data.bcc?.map((email) => ({ email, name: email.split('@')[0] || email })),

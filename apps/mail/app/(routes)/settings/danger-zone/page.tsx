@@ -10,7 +10,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem } from '@/compo
 import { SettingsCard } from '@/components/settings/settings-card';
 import { useSession, signOut } from '@/lib/auth-client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,9 +35,15 @@ function DeleteAccountDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const t = useTranslations();
   const navigate = useNavigate();
-  const trpc = useTRPC();
+  const { sendAction } = useWebSocketMail();
   const { refetch } = useSession();
-  const { mutateAsync: deleteAccount, isPending } = useMutation(trpc.user.delete.mutationOptions());
+  const { mutateAsync: deleteAccount, isPending } = useMutation({
+    mutationFn: async () => {
+      return await sendAction({
+        type: 'zero_mail_delete_account',
+      });
+    },
+  });
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),

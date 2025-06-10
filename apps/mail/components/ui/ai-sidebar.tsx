@@ -6,7 +6,7 @@ import { useSearchValue } from '@/hooks/use-search-value';
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AIChat } from '@/components/create/ai-chat';
-import { useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { Tools } from '../../../server/src/types';
 import { useBilling } from '@/hooks/use-billing';
 import { PromptsDialog } from './prompts-dialog';
@@ -347,7 +347,7 @@ function AISidebar({ className }: AISidebarProps) {
   } = useAISidebar();
   const { isPro, track, refetch: refetchBilling } = useBilling();
   const queryClient = useQueryClient();
-  const trpc = useTRPC();
+  const { sendMessage } = useWebSocketMail();
   const [threadId, setThreadId] = useQueryState('threadId');
   const { folder } = useParams<{ folder: string }>();
   const { refetch: refetchLabels } = useLabels();
@@ -409,7 +409,7 @@ function AISidebar({ className }: AISidebarProps) {
           break;
         case Tools.SendEmail:
           await queryClient.invalidateQueries({
-            queryKey: trpc.mail.listThreads.queryKey({ folder: 'sent' }),
+            queryKey: ['threads', 'sent'],
           });
           break;
         case Tools.MarkThreadsRead:
@@ -421,7 +421,7 @@ function AISidebar({ className }: AISidebarProps) {
           await Promise.all(
             (toolCall.args as { threadIds: string[] }).threadIds.map((id) =>
               queryClient.invalidateQueries({
-                queryKey: trpc.mail.get.queryKey({ id }),
+                queryKey: ['thread', id],
               }),
             ),
           );

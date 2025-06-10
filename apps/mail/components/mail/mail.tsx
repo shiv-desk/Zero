@@ -30,7 +30,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useCommandPalette } from '../context/command-palette-context';
 import { useOptimisticActions } from '@/hooks/use-optimistic-actions';
 import { ThreadDisplay } from '@/components/mail/thread-display';
-import { trpcClient, useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { backgroundQueueAtom } from '@/store/backgroundQueue';
 import { handleUnsubscribe } from '@/lib/email-utils.client';
 import { useMediaQuery } from '../../hooks/use-media-query';
@@ -105,21 +105,23 @@ export const defaultLabels = [
 ];
 
 const AutoLabelingSettings = () => {
-  const trpc = useTRPC();
+  const { sendMessage, sendAction } = useWebSocketMail();
   const [open, setOpen] = useState(false);
-  const { data: storedLabels } = useQuery(trpc.brain.getLabels.queryOptions());
-  const { mutateAsync: updateLabels, isPending } = useMutation(
-    trpc.brain.updateLabels.mutationOptions(),
-  );
+  const { data: storedLabels } = useQuery({
+    queryKey: ['brain-labels'],
+    queryFn: async () => {
+      return await sendMessage({
+        type: 'zero_mail_get_brain_labels',
+      });
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+  const [isPending, setIsPending] = useState(false);
   const [, setPricingDialog] = useQueryState('pricingDialog');
   const [labels, setLabels] = useState<ITag[]>([]);
   const [newLabel, setNewLabel] = useState({ name: '', usecase: '' });
-  const { mutateAsync: EnableBrain, isPending: isEnablingBrain } = useMutation(
-    trpc.brain.enableBrain.mutationOptions(),
-  );
-  const { mutateAsync: DisableBrain, isPending: isDisablingBrain } = useMutation(
-    trpc.brain.disableBrain.mutationOptions(),
-  );
+  const [isEnablingBrain, setIsEnablingBrain] = useState(false);
+  const [isDisablingBrain, setIsDisablingBrain] = useState(false);
   const { data: brainState, refetch: refetchBrainState } = useBrainState();
   const { isLoading, isPro } = useBilling();
 
@@ -179,21 +181,36 @@ const AutoLabelingSettings = () => {
         usecase: newLabel.usecase,
       });
     }
-    await updateLabels({ labels: updatedLabels });
-    setOpen(false);
-    toast.success('Labels updated successfully, Zero will start using them.');
+    
+    setIsPending(true);
+    try {
+      await sendAction({
+        type: 'zero_mail_update_brain_labels',
+        labels: updatedLabels,
+      });
+      setOpen(false);
+      toast.success('Labels updated successfully, Zero will start using them.');
+    } catch (error) {
+      toast.error('Failed to update labels');
+    } finally {
+      setIsPending(false);
+    }
   };
 
   const handleEnableBrain = useCallback(async () => {
-    toast.promise(EnableBrain({}), {
-      loading: 'Enabling autolabeling...',
-      success: 'Autolabeling enabled successfully',
-      error: 'Failed to enable autolabeling',
-      finally: async () => {
-        await refetchBrainState();
-      },
-    });
-  }, []);
+    setIsEnablingBrain(true);
+    try {
+      await sendAction({
+        type: 'zero_mail_enable_brain',
+      });
+      await refetchBrainState();
+      toast.success('Autolabeling enabled successfully');
+    } catch (error) {
+      toast.error('Failed to enable autolabeling');
+    } finally {
+      setIsEnablingBrain(false);
+    }
+  }, [sendAction, refetchBrainState]);
 
   const handleDisableBrain = useCallback(async () => {
     toast.promise(DisableBrain({}), {

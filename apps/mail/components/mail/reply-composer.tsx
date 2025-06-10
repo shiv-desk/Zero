@@ -2,8 +2,7 @@ import { useActiveConnection } from '@/hooks/use-connections';
 import { useEmailAliases } from '@/hooks/use-email-aliases';
 import { EmailComposer } from '../create/email-composer';
 import { useHotkeysContext } from 'react-hotkeys-hook';
-import { useTRPC } from '@/providers/query-provider';
-import { useMutation } from '@tanstack/react-query';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { useSettings } from '@/hooks/use-settings';
 import { constructReplyBody, constructForwardBody } from '@/lib/utils';
 import { useThread } from '@/hooks/use-threads';
@@ -29,8 +28,7 @@ export default function ReplyCompose({ messageId }: ReplyComposeProps) {
   const t = useTranslations();
   const [draftId, setDraftId] = useQueryState('draftId');
   const { data: draft, isLoading: isDraftLoading } = useDraft(draftId ?? null);
-  const trpc = useTRPC();
-  const { mutateAsync: sendEmail } = useMutation(trpc.mail.send.mutationOptions());
+  const { sendMessage } = useWebSocketMail();
   const { data: activeConnection } = useActiveConnection();
   const { data: settings, isLoading: settingsLoading } = useSettings();
 
@@ -152,7 +150,8 @@ export default function ReplyCompose({ messageId }: ReplyComposeProps) {
             replyToMessage.decodedBody,
           );
 
-      await sendEmail({
+      await sendMessage({
+        type: 'zero_mail_send',
         to: toRecipients,
         cc: ccRecipients,
         bcc: bccRecipients,
@@ -160,19 +159,6 @@ export default function ReplyCompose({ messageId }: ReplyComposeProps) {
         message: emailBody,
         attachments: await serializeFiles(data.attachments),
         fromEmail: aliases?.[0]?.email || userEmail,
-        headers: {
-          'In-Reply-To': replyToMessage?.messageId ?? '',
-          References: [
-            ...(replyToMessage?.references ? replyToMessage.references.split(' ') : []),
-            replyToMessage?.messageId,
-          ]
-            .filter(Boolean)
-            .join(' '),
-          'Thread-Id': replyToMessage?.threadId ?? '',
-        },
-        threadId: replyToMessage?.threadId,
-        isForward: mode === 'forward',
-        originalMessage: replyToMessage.decodedBody,
       });
 
       posthog.capture('Reply Email Sent');

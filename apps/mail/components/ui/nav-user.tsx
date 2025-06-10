@@ -27,7 +27,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CircleCheck, Danger, ThreeDots } from '../icons/icons';
 import { signOut, useSession } from '@/lib/auth-client';
 import { AddConnectionDialog } from '../connection/add';
-import { useTRPC } from '@/providers/query-provider';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useBrainState } from '@/hooks/use-summary';
 import { useThreads } from '@/hooks/use-threads';
@@ -48,11 +48,15 @@ export function NavUser() {
   const { theme, setTheme } = useTheme();
   const t = useTranslations();
   const { state } = useSidebar();
-  const trpc = useTRPC();
+  const { sendAction } = useWebSocketMail();
   const [, setThreadId] = useQueryState('threadId');
-  const { mutateAsync: setDefaultConnection } = useMutation(
-    trpc.connections.setDefault.mutationOptions(),
-  );
+  
+  const setDefaultConnection = async ({ connectionId }: { connectionId: string }) => {
+    return await sendAction({
+      type: 'zero_mail_set_default_connection',
+      connectionId,
+    });
+  };
   const { openBillingPortal, customer: billingCustomer, isPro } = useBilling();
   const pathname = useLocation().pathname;
   const [searchParams] = useSearchParams();

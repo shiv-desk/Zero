@@ -17,8 +17,7 @@ import { Command, Paperclip, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Avatar, AvatarFallback } from '../ui/avatar';
-import { useTRPC } from '@/providers/query-provider';
-import { useMutation } from '@tanstack/react-query';
+import { useWebSocketMail } from '@/hooks/use-websocket-mail';
 import { useRef, useState, useEffect } from 'react';
 import { cn, formatFileSize } from '@/lib/utils';
 import { useThread } from '@/hooks/use-threads';
@@ -141,12 +140,7 @@ export function EmailComposer({
     };
   }, []);
 
-  const trpc = useTRPC();
-  const { mutateAsync: aiCompose } = useMutation(trpc.ai.compose.mutationOptions());
-  const { mutateAsync: createDraft } = useMutation(trpc.drafts.create.mutationOptions());
-  const { mutateAsync: generateEmailSubject } = useMutation(
-    trpc.ai.generateEmailSubject.mutationOptions(),
-  );
+  const { sendAction } = useWebSocketMail();
   useEffect(() => {
     if (isComposeOpen === 'true' && toInputRef.current) {
       toInputRef.current.focus();
