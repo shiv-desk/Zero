@@ -7,6 +7,13 @@ import {
   X,
   Sparkles,
 } from '../icons/icons';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { TextEffect } from '@/components/motion-primitives/text-effect';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../ui/tooltip';
@@ -46,6 +53,12 @@ interface EmailComposerProps {
   initialSubject?: string;
   initialMessage?: string;
   initialAttachments?: File[];
+  replyingTo?: string;
+  aliases?: {
+    email: string;
+    name?: string;
+    primary?: boolean;
+  }[];
   onSendEmail: (data: {
     to: string[];
     cc?: string[];
@@ -53,11 +66,13 @@ interface EmailComposerProps {
     subject: string;
     message: string;
     attachments: File[];
+    fromEmail?: string;
   }) => Promise<void>;
   onClose?: () => void;
   className?: string;
   autofocus?: boolean;
   settingsLoading?: boolean;
+  editorClassName?: string;
 }
 
 const isValidEmail = (email: string): boolean => {
@@ -90,6 +105,9 @@ export function EmailComposer({
   className,
   autofocus = false,
   settingsLoading = false,
+  replyingTo,
+  aliases = [],
+  editorClassName,
 }: EmailComposerProps) {
   const [showCc, setShowCc] = useState(initialCc.length > 0);
   const [showBcc, setShowBcc] = useState(initialBcc.length > 0);
@@ -156,6 +174,7 @@ export function EmailComposer({
       subject: initialSubject,
       message: initialMessage,
       attachments: initialAttachments,
+      fromEmail: aliases?.find((alias) => alias.primary)?.email || aliases?.[0]?.email || '',
     },
   });
 
@@ -239,6 +258,7 @@ export function EmailComposer({
   const bccEmails = watch('bcc');
   const subjectInput = watch('subject');
   const attachments = watch('attachments');
+  const fromEmail = watch('fromEmail');
 
   const handleAttachment = (files: File[]) => {
     if (files && files.length > 0) {
@@ -296,6 +316,7 @@ export function EmailComposer({
         subject: values.subject,
         message: editor.getHTML(),
         attachments: values.attachments || [],
+        fromEmail: values.fromEmail,
       });
       setHasUnsavedChanges(false);
       editor.commands.clearContent(true);
@@ -900,7 +921,7 @@ export function EmailComposer({
         </div>
 
         {/* Subject */}
-        <div className="flex items-center gap-2 p-3">
+        <div className="flex items-center gap-2 border-b p-3">
           <p className="text-sm font-medium text-[#8C8C8C]">Subject:</p>
           <input
             className="h-4 w-full bg-transparent text-sm font-normal leading-normal text-black placeholder:text-[#797979] focus:outline-none dark:text-white/90"
@@ -924,6 +945,36 @@ export function EmailComposer({
           </button>
         </div>
 
+        {/* From */}
+        {aliases.length > 0 && !replyingTo && (
+          <div className="flex items-center gap-2 border-b p-3">
+            <p className="text-sm font-medium text-[#8C8C8C]">From:</p>
+            <Select
+              value={fromEmail || ''}
+              onValueChange={(value) => {
+                setValue('fromEmail', value);
+                setHasUnsavedChanges(true);
+              }}
+            >
+              <SelectTrigger className="h-6 flex-1 border-0 bg-transparent p-0 text-sm font-normal text-black placeholder:text-[#797979] focus:outline-none focus:ring-0 dark:text-white/90">
+                <SelectValue placeholder="Select an email address" />
+              </SelectTrigger>
+              <SelectContent>
+                {aliases.map((alias) => (
+                  <SelectItem key={alias.email} value={alias.email}>
+                    <div className="flex flex-row items-center gap-1">
+                      <span className="text-sm">
+                        {alias.name ? `${alias.name} <${alias.email}>` : alias.email}
+                      </span>
+                      {alias.primary && <span className="text-xs text-[#8C8C8C]">Primary</span>}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Message Content */}
         <div className="grow self-stretch overflow-y-auto border-t bg-[#FFFFFF] px-3 py-3 outline-white/5 dark:bg-[#202020]">
           <div
@@ -931,7 +982,8 @@ export function EmailComposer({
               editor.commands.focus();
             }}
             className={cn(
-              'max-h-[300px] min-h-[200px] w-full',
+              `max-h-[300px] min-h-[200px] w-full`,
+              editorClassName,
               aiGeneratedMessage !== null ? 'blur-sm' : '',
             )}
           >

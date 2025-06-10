@@ -307,6 +307,7 @@ type Props = {
 };
 
 const MailDisplayLabels = ({ labels }: { labels: string[] }) => {
+  const t = useTranslations()
   const visibleLabels = labels.filter(
     (label) => !['unread', 'inbox'].includes(label.toLowerCase()),
   );
@@ -320,39 +321,48 @@ const MailDisplayLabels = ({ labels }: { labels: string[] }) => {
 
         let icon = null;
         let bgColor = '';
+        let labelText= '';
 
         switch (normalizedLabel) {
           case 'important':
             icon = <Lightning className="h-3.5 w-3.5 fill-white" />;
             bgColor = 'bg-[#F59E0D]';
+            labelText = t('common.mailCategories.important');
             break;
           case 'promotions':
             icon = <Tag className="h-3.5 w-3.5 fill-white" />;
             bgColor = 'bg-[#F43F5E]';
+            labelText = t('common.mailCategories.promotions');
             break;
           case 'personal':
             icon = <User className="h-3.5 w-3.5 fill-white" />;
             bgColor = 'bg-[#39AE4A]';
+            labelText = t('common.mailCategories.personal');
             break;
           case 'updates':
             icon = <Bell className="h-3.5 w-3.5 fill-white" />;
             bgColor = 'bg-[#8B5CF6]';
+            labelText= t('common.mailCategories.updates');
             break;
           case 'work':
             icon = <Briefcase className="h-3.5 w-3.5 text-white" />;
             bgColor = '';
+            labelText= t('common.mailCategories.work');
             break;
           case 'forums':
             icon = <Users className="h-3.5 w-3.5 text-white" />;
             bgColor = 'bg-blue-600';
+            labelText= t('common.mailCategories.forums');
             break;
           case 'notes':
             icon = <StickyNote className="h-3.5 w-3.5 text-white" />;
             bgColor = 'bg-amber-500';
+            labelText= t('common.mailCategories.notes');
             break;
           case 'starred':
             icon = <Star className="h-3.5 w-3.5 fill-white text-white" />;
             bgColor = 'bg-yellow-500';
+            labelText = t('common.mailCategories.starred');
             break;
           default:
             return null;
@@ -369,7 +379,7 @@ const MailDisplayLabels = ({ labels }: { labels: string[] }) => {
               </Badge>
             </TooltipTrigger>
             <TooltipContent>
-              <p className="text-xs text-white">{label}</p>
+              <p className="text-xs">{labelText}</p>
             </TooltipContent>
           </Tooltip>
         );
@@ -833,7 +843,7 @@ const MailDisplay = ({ emailData, index, totalEmails, demo, threadAttachments }:
         }
       }
     }
-  }, [demo, emailData.id, isLastEmail]);
+  }, [demo, emailData.id, isLastEmail, activeReplyId]);
 
   //   const listUnsubscribeAction = useMemo(
   //     () =>
@@ -1768,7 +1778,7 @@ const MailDisplay = ({ emailData, index, totalEmails, demo, threadAttachments }:
                     ))}
                   </div>
                 ) : null}
-                <div className="mb-2 mt-2 flex gap-2 px-4">
+                <div className="my-2.5 flex gap-2 px-4">
                   <ActionButton
                     onClick={(e) => {
                       e.stopPropagation();

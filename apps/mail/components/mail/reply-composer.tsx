@@ -110,7 +110,29 @@ export default function ReplyCompose({ messageId }: ReplyComposeProps) {
     try {
       const userEmail = activeConnection.email.toLowerCase();
 
-      // Convert email strings to Sender objects
+      let fromEmail = userEmail;
+
+      if (aliases && aliases.length > 0 && replyToMessage) {
+        const allRecipients = [
+          ...(replyToMessage.to || []),
+          ...(replyToMessage.cc || []),
+          ...(replyToMessage.bcc || []),
+        ];
+
+        const matchingAlias = aliases.find((alias) =>
+          allRecipients.some(
+            (recipient) => recipient.email.toLowerCase() === alias.email.toLowerCase(),
+          ),
+        );
+
+        if (matchingAlias) {
+          fromEmail = matchingAlias.email;
+        } else {
+          fromEmail =
+            aliases.find((alias) => alias.primary)?.email || aliases[0]?.email || userEmail;
+        }
+      }
+
       const toRecipients: Sender[] = data.to.map((email) => ({
         email,
         name: email.split('@')[0] || 'User',
@@ -158,7 +180,20 @@ export default function ReplyCompose({ messageId }: ReplyComposeProps) {
         subject: data.subject,
         message: emailBody,
         attachments: await serializeFiles(data.attachments),
-        fromEmail: aliases?.[0]?.email || userEmail,
+        fromEmail: fromEmail,
+        headers: {
+          'In-Reply-To': replyToMessage?.messageId ?? '',
+          References: [
+            ...(replyToMessage?.references ? replyToMessage.references.split(' ') : []),
+            replyToMessage?.messageId,
+          ]
+            .filter(Boolean)
+            .join(' '),
+          'Thread-Id': replyToMessage?.threadId ?? '',
+        },
+        threadId: replyToMessage?.threadId,
+        isForward: mode === 'forward',
+        originalMessage: replyToMessage.decodedBody,
       });
 
       posthog.capture('Reply Email Sent');
@@ -201,6 +236,7 @@ export default function ReplyCompose({ messageId }: ReplyComposeProps) {
   return (
     <div className="w-full rounded-xl">
       <EmailComposer
+        editorClassName="min-h-[140px]"
         className="w-full !max-w-none border pb-1"
         onSendEmail={handleSendEmail}
         onClose={async () => {
@@ -231,6 +267,7 @@ export default function ReplyCompose({ messageId }: ReplyComposeProps) {
         })}
         autofocus={shouldFocus}
         settingsLoading={settingsLoading}
+        replyingTo={replyToMessage?.sender.email}
       />
     </div>
   );
