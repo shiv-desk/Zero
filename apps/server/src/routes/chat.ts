@@ -40,16 +40,6 @@ export enum IncomingMessageType {
   ChatRequestCancel = 'cf_agent_chat_request_cancel',
   Mail_List = 'zero_mail_list_threads',
   Mail_Get = 'zero_mail_get_thread',
-  Mail_MarkRead = 'zero_mail_mark_read',
-  Mail_MarkUnread = 'zero_mail_mark_unread',
-  Mail_ToggleStar = 'zero_mail_toggle_star',
-  Mail_BulkArchive = 'zero_mail_bulk_archive',
-  Mail_BulkDelete = 'zero_mail_bulk_delete',
-  Mail_Send = 'zero_mail_send',
-  Mail_Count = 'zero_mail_count',
-  Mail_ModifyLabels = 'zero_mail_modify_labels',
-  Mail_GetLabels = 'zero_mail_get_labels',
-  Mail_GetEmailAliases = 'zero_mail_get_email_aliases',
 }
 
 export enum OutgoingMessageType {
@@ -58,12 +48,6 @@ export enum OutgoingMessageType {
   ChatClear = 'cf_agent_chat_clear',
   Mail_List = 'zero_mail_list_threads',
   Mail_Get = 'zero_mail_get_thread',
-  Mail_ActionComplete = 'zero_mail_action_complete',
-  Mail_ActionError = 'zero_mail_action_error',
-  Mail_Count = 'zero_mail_count',
-  Mail_Send = 'zero_mail_send',
-  Mail_GetLabels = 'zero_mail_get_labels',
-  Mail_GetEmailAliases = 'zero_mail_get_email_aliases',
 }
 
 export type IncomingMessage =
@@ -88,71 +72,12 @@ export type IncomingMessage =
       folder: string;
       query: string;
       maxResults: number;
-      labelIds?: string[];
+      labelIds: string[];
       pageToken: string;
-      messageId?: string;
     }
   | {
       type: IncomingMessageType.Mail_Get;
       id: string;
-      messageId?: string;
-    }
-  | {
-      type: IncomingMessageType.Mail_MarkRead;
-      threadIds: string[];
-      optimisticId?: string;
-    }
-  | {
-      type: IncomingMessageType.Mail_MarkUnread;
-      threadIds: string[];
-      optimisticId?: string;
-    }
-  | {
-      type: IncomingMessageType.Mail_ToggleStar;
-      threadIds: string[];
-      starred: boolean;
-      optimisticId?: string;
-    }
-  | {
-      type: IncomingMessageType.Mail_BulkArchive;
-      threadIds: string[];
-      currentFolder: string;
-      optimisticId?: string;
-    }
-  | {
-      type: IncomingMessageType.Mail_BulkDelete;
-      threadIds: string[];
-      optimisticId?: string;
-    }
-  | {
-      type: IncomingMessageType.Mail_Send;
-      to: { email: string; name: string }[];
-      cc?: { email: string; name: string }[];
-      bcc?: { email: string; name: string }[];
-      subject: string;
-      message: string;
-      attachments?: any[];
-      fromEmail: string;
-      draftId?: string;
-    }
-  | {
-      type: IncomingMessageType.Mail_Count;
-      messageId?: string;
-    }
-  | {
-      type: IncomingMessageType.Mail_ModifyLabels;
-      threadIds: string[];
-      addLabelIds: string[];
-      removeLabelIds: string[];
-      optimisticId?: string;
-    }
-  | {
-      type: IncomingMessageType.Mail_GetLabels;
-      messageId?: string;
-    }
-  | {
-      type: IncomingMessageType.Mail_GetEmailAliases;
-      messageId?: string;
     };
 
 export type OutgoingMessage =
@@ -178,79 +103,11 @@ export type OutgoingMessage =
         }[];
         nextPageToken: string | null;
       };
-      messageId?: string;
-    }
-  | {
-      type: OutgoingMessageType.Mail_Get;
-      result: any;
-      messageId?: string;
-    }
-  | {
-      type: OutgoingMessageType.Mail_ActionComplete;
-      action: string;
-      threadIds: string[];
-      optimisticId?: string;
-    }
-  | {
-      type: OutgoingMessageType.Mail_ActionError;
-      action: string;
-      error: string;
-      optimisticId?: string;
-    }
-  | {
-      type: OutgoingMessageType.Mail_Count;
-      result: any;
-      messageId?: string;
-    }
-  | {
-      type: OutgoingMessageType.Mail_Send;
-      success: boolean;
-      error?: string;
-    }
-  | {
-      type: OutgoingMessageType.Mail_GetLabels;
-      result: any;
-      messageId?: string;
-    }
-  | {
-      type: OutgoingMessageType.Mail_GetEmailAliases;
-      result: any;
-      messageId?: string;
     };
 
 export class ZeroAgent extends AIChatAgent<typeof env> {
   private chatMessageAbortControllers: Map<string, AbortController> = new Map();
   driver: MailManager | null = null;
-
-  constructor(ctx: DurableObjectState, env: Env) {
-    super(ctx, env);
-    this.initOptimisticTables();
-  }
-
-  private async initOptimisticTables() {
-    await this.sql`
-      CREATE TABLE IF NOT EXISTS optimistic_actions (
-        id TEXT PRIMARY KEY,
-        type TEXT NOT NULL,
-        thread_ids TEXT NOT NULL,
-        params TEXT NOT NULL,
-        created_at INTEGER NOT NULL
-      )
-    `;
-  }
-
-  private async addOptimisticAction(type: string, threadIds: string[], params: any) {
-    const id = `opt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    await this.sql`
-      INSERT INTO optimistic_actions (id, type, thread_ids, params, created_at)
-      VALUES (${id}, ${type}, ${JSON.stringify(threadIds)}, ${JSON.stringify(params)}, ${Date.now()})
-    `;
-    return id;
-  }
-
-  private async removeOptimisticAction(id: string) {
-    await this.sql`DELETE FROM optimistic_actions WHERE id = ${id}`;
-  }
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
   }
@@ -438,295 +295,13 @@ export class ZeroAgent extends AIChatAgent<typeof env> {
             folder: data.folder,
             query: data.query,
             maxResults: data.maxResults,
-            labelIds: data.labelIds,
-            pageToken: data.pageToken,
           });
           connection.send(
             JSON.stringify({
               type: OutgoingMessageType.Mail_List,
               result,
-              messageId: data.messageId,
             }),
           );
-          break;
-        }
-        case IncomingMessageType.Mail_Get: {
-          if (!this.driver) {
-            throw new Error('Unauthorized no driver');
-          }
-          const result = await this.driver.get(data.id);
-          connection.send(
-            JSON.stringify({
-              type: OutgoingMessageType.Mail_Get,
-              result,
-              messageId: data.messageId,
-            }),
-          );
-          break;
-        }
-        case IncomingMessageType.Mail_MarkRead: {
-          if (!this.driver) {
-            throw new Error('Unauthorized no driver');
-          }
-          const optimisticId = data.optimisticId || await this.addOptimisticAction('read', data.threadIds, { read: true });
-          try {
-            await this.driver.modifyLabels(data.threadIds, {
-              addLabels: [],
-              removeLabels: ['UNREAD'],
-            });
-            await this.removeOptimisticAction(optimisticId);
-            this.broadcast(JSON.stringify({
-              type: OutgoingMessageType.Mail_ActionComplete,
-              action: 'markRead',
-              threadIds: data.threadIds,
-              optimisticId
-            }));
-          } catch (error) {
-            await this.removeOptimisticAction(optimisticId);
-            this.broadcast(JSON.stringify({
-              type: OutgoingMessageType.Mail_ActionError,
-              action: 'markRead',
-              error: error.message,
-              optimisticId
-            }));
-          }
-          break;
-        }
-        case IncomingMessageType.Mail_MarkUnread: {
-          if (!this.driver) {
-            throw new Error('Unauthorized no driver');
-          }
-          const optimisticId = data.optimisticId || await this.addOptimisticAction('read', data.threadIds, { read: false });
-          try {
-            await this.driver.modifyLabels(data.threadIds, {
-              addLabels: ['UNREAD'],
-              removeLabels: [],
-            });
-            await this.removeOptimisticAction(optimisticId);
-            this.broadcast(JSON.stringify({
-              type: OutgoingMessageType.Mail_ActionComplete,
-              action: 'markUnread',
-              threadIds: data.threadIds,
-              optimisticId
-            }));
-          } catch (error) {
-            await this.removeOptimisticAction(optimisticId);
-            this.broadcast(JSON.stringify({
-              type: OutgoingMessageType.Mail_ActionError,
-              action: 'markUnread',
-              error: error.message,
-              optimisticId
-            }));
-          }
-          break;
-        }
-        case IncomingMessageType.Mail_ToggleStar: {
-          if (!this.driver) {
-            throw new Error('Unauthorized no driver');
-          }
-          const optimisticId = data.optimisticId || await this.addOptimisticAction('star', data.threadIds, { starred: data.starred });
-          try {
-            await this.driver.modifyLabels(data.threadIds, {
-              addLabels: data.starred ? ['STARRED'] : [],
-              removeLabels: data.starred ? [] : ['STARRED'],
-            });
-            await this.removeOptimisticAction(optimisticId);
-            this.broadcast(JSON.stringify({
-              type: OutgoingMessageType.Mail_ActionComplete,
-              action: 'toggleStar',
-              threadIds: data.threadIds,
-              optimisticId
-            }));
-          } catch (error) {
-            await this.removeOptimisticAction(optimisticId);
-            this.broadcast(JSON.stringify({
-              type: OutgoingMessageType.Mail_ActionError,
-              action: 'toggleStar',
-              error: error.message,
-              optimisticId
-            }));
-          }
-          break;
-        }
-        case IncomingMessageType.Mail_BulkArchive: {
-          if (!this.driver) {
-            throw new Error('Unauthorized no driver');
-          }
-          const optimisticId = data.optimisticId || await this.addOptimisticAction('move', data.threadIds, { destination: 'archive', currentFolder: data.currentFolder });
-          try {
-            await this.driver.modifyLabels(data.threadIds, {
-              addLabels: [],
-              removeLabels: ['INBOX'],
-            });
-            await this.removeOptimisticAction(optimisticId);
-            this.broadcast(JSON.stringify({
-              type: OutgoingMessageType.Mail_ActionComplete,
-              action: 'bulkArchive',
-              threadIds: data.threadIds,
-              optimisticId
-            }));
-          } catch (error) {
-            await this.removeOptimisticAction(optimisticId);
-            this.broadcast(JSON.stringify({
-              type: OutgoingMessageType.Mail_ActionError,
-              action: 'bulkArchive',
-              error: error.message,
-              optimisticId
-            }));
-          }
-          break;
-        }
-        case IncomingMessageType.Mail_BulkDelete: {
-          if (!this.driver) {
-            throw new Error('Unauthorized no driver');
-          }
-          const optimisticId = data.optimisticId || await this.addOptimisticAction('move', data.threadIds, { destination: 'trash' });
-          try {
-            await this.driver.modifyLabels(data.threadIds, {
-              addLabels: ['TRASH'],
-              removeLabels: ['INBOX'],
-            });
-            await this.removeOptimisticAction(optimisticId);
-            this.broadcast(JSON.stringify({
-              type: OutgoingMessageType.Mail_ActionComplete,
-              action: 'bulkDelete',
-              threadIds: data.threadIds,
-              optimisticId
-            }));
-          } catch (error) {
-            await this.removeOptimisticAction(optimisticId);
-            this.broadcast(JSON.stringify({
-              type: OutgoingMessageType.Mail_ActionError,
-              action: 'bulkDelete',
-              error: error.message,
-              optimisticId
-            }));
-          }
-          break;
-        }
-        case IncomingMessageType.Mail_Send: {
-          if (!this.driver) {
-            throw new Error('Unauthorized no driver');
-          }
-          try {
-            await this.driver.send({
-              to: data.to,
-              cc: data.cc,
-              bcc: data.bcc,
-              subject: data.subject,
-              message: data.message,
-              attachments: data.attachments,
-              fromEmail: data.fromEmail,
-              draftId: data.draftId,
-            });
-            connection.send(JSON.stringify({
-              type: OutgoingMessageType.Mail_Send,
-              success: true,
-            }));
-          } catch (error) {
-            connection.send(JSON.stringify({
-              type: OutgoingMessageType.Mail_Send,
-              success: false,
-              error: error.message,
-            }));
-          }
-          break;
-        }
-        case IncomingMessageType.Mail_Count: {
-          if (!this.driver) {
-            throw new Error('Unauthorized no driver');
-          }
-          const result = await this.driver.count();
-          connection.send(
-            JSON.stringify({
-              type: OutgoingMessageType.Mail_Count,
-              result,
-              messageId: data.messageId,
-            }),
-          );
-          break;
-        }
-        case IncomingMessageType.Mail_ModifyLabels: {
-          if (!this.driver) {
-            throw new Error('Unauthorized no driver');
-          }
-          const optimisticId = data.optimisticId || await this.addOptimisticAction('labels', data.threadIds, { addLabelIds: data.addLabelIds, removeLabelIds: data.removeLabelIds });
-          try {
-            await this.driver.modifyLabels(data.threadIds, {
-              addLabels: data.addLabelIds,
-              removeLabels: data.removeLabelIds,
-            });
-            await this.removeOptimisticAction(optimisticId);
-            this.broadcast(JSON.stringify({
-              type: OutgoingMessageType.Mail_ActionComplete,
-              action: 'modifyLabels',
-              threadIds: data.threadIds,
-              optimisticId
-            }));
-          } catch (error) {
-            await this.removeOptimisticAction(optimisticId);
-            this.broadcast(JSON.stringify({
-              type: OutgoingMessageType.Mail_ActionError,
-              action: 'modifyLabels',
-              error: error.message,
-              optimisticId
-            }));
-          }
-          break;
-        }
-        case IncomingMessageType.Mail_GetLabels: {
-          if (!this.driver) {
-            throw new Error('Unauthorized no driver');
-          }
-          const result = await this.driver.getUserLabels();
-          connection.send(
-            JSON.stringify({
-              type: OutgoingMessageType.Mail_GetLabels,
-              result,
-              messageId: data.messageId,
-            }),
-          );
-          break;
-        }
-        case IncomingMessageType.Mail_GetEmailAliases: {
-          if (!this.driver) {
-            throw new Error('Unauthorized no driver');
-          }
-          const result = await this.driver.getEmailAliases();
-          connection.send(
-            JSON.stringify({
-              type: OutgoingMessageType.Mail_GetEmailAliases,
-              result,
-              messageId: data.messageId,
-            }),
-          );
-          break;
-        }
-
-        case IncomingMessageType.Mail_Send: {
-          if (!this.driver) {
-            throw new Error('Unauthorized no driver');
-          }
-          try {
-            const result = await this.driver.sendEmail(data);
-            connection.send(
-              JSON.stringify({
-                type: OutgoingMessageType.Mail_SendResult,
-                result: result,
-                messageId: data.messageId,
-              }),
-            );
-          } catch (error) {
-            connection.send(
-              JSON.stringify({
-                type: OutgoingMessageType.Mail_ActionError,
-                action: 'sendEmail',
-                error: error.message,
-                messageId: data.messageId,
-              }),
-            );
-          }
-          break;
         }
       }
     }

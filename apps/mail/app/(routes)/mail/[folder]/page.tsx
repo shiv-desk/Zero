@@ -1,8 +1,8 @@
 import { Navigate, useLoaderData, useNavigate } from 'react-router';
-import { useTRPC } from '@/providers/query-provider';
 import { MailLayout } from '@/components/mail/mail';
 import { useQuery } from '@tanstack/react-query';
 import { authProxy } from '@/lib/auth-proxy';
+import { useLabels } from '@/hooks/use-labels';
 import { useEffect, useState } from 'react';
 import type { Route } from './+types/page';
 import { Loader2 } from 'lucide-react';
@@ -10,10 +10,12 @@ import { Loader2 } from 'lucide-react';
 const ALLOWED_FOLDERS = ['inbox', 'draft', 'sent', 'spam', 'bin', 'archive'];
 
 export async function loader({ params, request }: Route.LoaderArgs) {
-  if (!params.folder) return Response.redirect(`${import.meta.env.VITE_PUBLIC_APP_URL}/mail/inbox`);
+  const baseUrl = import.meta.env.VITE_PUBLIC_APP_URL || 'http://localhost:3000';
+  
+  if (!params.folder) return Response.redirect(`${baseUrl}/mail/inbox`);
 
   const session = await authProxy.api.getSession({ headers: request.headers });
-  if (!session) return Response.redirect(`${import.meta.env.VITE_PUBLIC_APP_URL}/login`);
+  if (!session) return Response.redirect(`${baseUrl}/login`);
 
   return {
     folder: params.folder,
@@ -23,7 +25,6 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 export default function MailPage() {
   const { folder } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
-  const trpc = useTRPC();
   const [isLabelValid, setIsLabelValid] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 

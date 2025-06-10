@@ -12,7 +12,6 @@ import {
 import { ServerProviders } from '@/providers/server-providers';
 import { ClientProviders } from '@/providers/client-providers';
 import { useEffect, type PropsWithChildren } from 'react';
-import { getServerTrpc } from '@/lib/trpc.server';
 import { Button } from '@/components/ui/button';
 import { siteConfig } from '@/lib/site-config';
 import { resolveLocale } from '@/i18n/request';
@@ -39,12 +38,21 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const locale = resolveLocale(request);
-  const trpc = getServerTrpc(request);
 
-  const connectionId = await trpc.connections.getDefault
-    .query()
-    .then((res) => res?.id ?? null)
-    .catch(() => null);
+  let connectionId = null;
+  try {
+    const response = await fetch(`${process.env.BACKEND_URL || 'http://localhost:8787'}/api/connections/default`, {
+      headers: {
+        'Cookie': request.headers.get('Cookie') || '',
+      },
+    });
+    if (response.ok) {
+      const data = await response.json();
+      connectionId = data?.id ?? null;
+    }
+  } catch (error) {
+    console.error('Failed to fetch default connection:', error);
+  }
 
   return {
     locale: locale ?? 'en',

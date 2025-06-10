@@ -1,14 +1,11 @@
-import { useWebSocketMail } from './use-websocket-mail';
 import { useQuery } from '@tanstack/react-query';
 
 export const useConnections = () => {
-  const { sendMessage } = useWebSocketMail();
   const connectionsQuery = useQuery({
     queryKey: ['connections'],
     queryFn: async () => {
-      return await sendMessage({
-        type: 'zero_mail_get_connections',
-      });
+      const response = await fetch('/api/connections');
+      return response.json();
     },
     staleTime: 1000 * 60 * 60,
   });
@@ -16,13 +13,11 @@ export const useConnections = () => {
 };
 
 export const useActiveConnection = () => {
-  const { sendMessage } = useWebSocketMail();
   const connectionsQuery = useQuery({
     queryKey: ['active-connection'],
     queryFn: async () => {
-      return await sendMessage({
-        type: 'zero_mail_get_active_connection',
-      });
+      const response = await fetch('/api/connections/active');
+      return response.json();
     },
     staleTime: 1000 * 60 * 60,
   });
