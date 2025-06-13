@@ -96,19 +96,35 @@ const Thread = memo(
     const optimisticLabels = useMemo(() => {
       if (!getThreadData?.labels) return [];
 
-      const labels = [...getThreadData.labels];
+      let labels = [...getThreadData.labels];
       const hasStarredLabel = labels.some((label) => label.name === 'STARRED');
 
       if (optimisticState.optimisticStarred !== null) {
         if (optimisticState.optimisticStarred && !hasStarredLabel) {
           labels.push({ id: 'starred-optimistic', name: 'STARRED' });
         } else if (!optimisticState.optimisticStarred && hasStarredLabel) {
-          return labels.filter((label) => label.name !== 'STARRED');
+          labels = labels.filter((label) => label.name !== 'STARRED');
         }
       }
 
+      if (optimisticState.optimisticLabels) {
+        labels = labels.filter(
+          (label) => !optimisticState.optimisticLabels.removedLabelIds.includes(label.id),
+        );
+
+        optimisticState.optimisticLabels.addedLabelIds.forEach((labelId) => {
+          if (!labels.some((label) => label.id === labelId)) {
+            labels.push({ id: labelId, name: '' });
+          }
+        });
+      }
+
       return labels;
-    }, [getThreadData?.labels, optimisticState.optimisticStarred]);
+    }, [
+      getThreadData?.labels,
+      optimisticState.optimisticStarred,
+      optimisticState.optimisticLabels,
+    ]);
 
     const { optimisticToggleStar, optimisticToggleImportant, optimisticMoveThreadsTo } =
       useOptimisticActions();
