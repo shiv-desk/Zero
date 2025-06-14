@@ -63,7 +63,7 @@ const coreTeamMembers = [
   'nizzyabi',
   'ahmetskilinc',
   'BlankParticle',
-  'needlexo',
+  'dumbneedle',
   'dakdevs',
   'mrgsub',
 ];
@@ -89,10 +89,10 @@ const specialRoles: Record<
     x: 'bruvimtired',
     website: 'https://ahmetk.dev/',
   },
-  needlexo: {
+  dumbneedle: {
     role: 'Software Engineer',
     position: 5,
-    x: 'needleXO',
+    x: 'dumbneedle',
     website: 'https://needle.rip',
   },
   dakdevs: {
