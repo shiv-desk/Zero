@@ -276,6 +276,15 @@ export function AIChat({
     onLengthChange: () => setInput(editor.getText()),
     onKeydown(event) {
       if (event.key === 'Enter' && !event.metaKey && !event.shiftKey) {
+        // Check if mention suggestion popup is active
+        const tippyPopup = document.querySelector('[data-tippy-root] .bg-popover');
+        const mentionList = document.querySelector('.bg-popover');
+        
+        // If mention popup is visible, don't handle Enter key - let the mention extension handle it
+        if (tippyPopup || mentionList) {
+          return;
+        }
+        
         event.preventDefault();
         handleSubmit(event as unknown as React.FormEvent<HTMLFormElement>);
         editor.commands.clearContent(true);

@@ -19,6 +19,7 @@ import {
 } from 'novel';
 
 import { cx } from 'class-variance-authority';
+import { createToolMention, type Tool } from './mention-extension';
 
 //TODO I am using cx here to get tailwind autocomplete working, idk if someone else can write a regex to just capture the class key in objects
 const aiHighlight = AIHighlight;
@@ -143,6 +144,25 @@ const starterKit = StarterKit.configure({
 
 const characterCount = CharacterCount.configure();
 
+const defaultTools: Tool[] = [
+  { 
+    id: 'zero', 
+    name: 'Zero', 
+    description: 'Zero AI',
+    logo: ``,
+    execute: async () => {
+      console.log('Zero');
+    }
+  },
+];
+
+const toolMention = createToolMention({
+  tools: defaultTools,
+  onToolMention: (tool) => {
+    console.log('Tool mentioned:', tool.id, tool.name);
+  }
+});
+
 export const defaultExtensions = [
   starterKit,
   placeholder,
@@ -161,4 +181,5 @@ export const defaultExtensions = [
   Color,
   CustomKeymap,
   GlobalDragHandle,
+  toolMention,
 ];
