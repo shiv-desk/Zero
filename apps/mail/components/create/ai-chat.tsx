@@ -276,11 +276,23 @@ export function AIChat({
     onLengthChange: () => setInput(editor.getText()),
     onKeydown(event) {
       if (event.key === 'Enter' && !event.metaKey && !event.shiftKey) {
-        // Until there's a better way to handle this.
-        const tippyPopup = document.querySelector('[data-tippy-root] .bg-popover');
-        const mentionList = document.querySelector('.bg-popover');
+        const { state } = editor;
         
-        if (tippyPopup || mentionList) {
+        const hasSuggestionActive = state.plugins.some(plugin => {
+          const pluginState = plugin.getState(state);
+          
+          if (pluginState && typeof pluginState === 'object') {
+            const hasActive = 'active' in pluginState && pluginState.active;
+            const hasRange = 'range' in pluginState && pluginState.range;
+            const hasQuery = 'query' in pluginState && pluginState.query !== null;
+            
+            return hasActive || (hasRange && hasQuery);
+          }
+          
+          return false;
+        });
+        
+        if (hasSuggestionActive) {
           return;
         }
         

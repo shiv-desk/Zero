@@ -19,9 +19,9 @@ export const twilio = (forceUseRealService = false) => {
   //     };
   //   }
 
-  if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_PHONE_NUMBER) {
-    throw new Error('Twilio is not configured correctly');
-  }
+  // if (!env.TWILIO_ACCOUNT_SID || !env.TWILIO_AUTH_TOKEN || !env.TWILIO_PHONE_NUMBER) {
+  //   throw new Error('Twilio is not configured correctly');
+  // }
 
   const send = async (to: string, body: string) => {
     const response = await fetch(
