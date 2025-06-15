@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import DOMPurify from 'dompurify';
 import { cn } from '../../lib/utils';
 
 export interface MentionListRef {
@@ -84,7 +85,7 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>((props, 
             {item.logo ? (
               <div 
                 className="w-4 h-4 text-muted-foreground" 
-                dangerouslySetInnerHTML={{ __html: item.logo }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.logo) }}
               />
             ) : item.avatar ? (
               <img
