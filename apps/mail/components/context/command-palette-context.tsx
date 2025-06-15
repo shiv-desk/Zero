@@ -255,34 +255,39 @@ export function CommandPalette({ children }: { children: React.ReactNode }) {
     const down = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
+        e.stopPropagation();
         setOpen((prevOpen) => !prevOpen);
       }
 
       if (open) {
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'f') {
           e.preventDefault();
+          e.stopPropagation();
           setCurrentView('filter');
         }
 
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
           e.preventDefault();
+          e.stopPropagation();
           setCurrentView('search');
         }
 
         if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'l') {
           e.preventDefault();
+          e.stopPropagation();
           setCurrentView('labels');
         }
 
         if (e.key === 'Escape' && currentView !== 'main') {
           e.preventDefault();
+          e.stopPropagation();
           setCurrentView('main');
         }
       }
     };
 
-    document.addEventListener('keydown', down);
-    return () => document.removeEventListener('keydown', down);
+    document.addEventListener('keydown', down, { capture: true });
+    return () => document.removeEventListener('keydown', down, { capture: true });
   }, [open, currentView]);
 
   const runCommand = useCallback((command: () => unknown) => {
