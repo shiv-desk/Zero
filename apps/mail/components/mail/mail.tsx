@@ -646,12 +646,58 @@ function BulkSelectActions() {
   const folder = params?.folder ?? 'inbox';
   const [{ refetch: refetchThreads }] = useThreads();
   const { refetch: refetchStats } = useStats();
+  const queryClient = useQueryClient();
+  const trpc = useTRPC();
   const {
     optimisticMarkAsRead,
+    optimisticMarkAsUnread,
     optimisticToggleStar,
     optimisticMoveThreadsTo,
     optimisticDeleteThreads,
   } = useOptimisticActions();
+
+  const calculateReadState = useCallback(async () => {
+    let readCount = 0;
+    let unreadCount = 0;
+
+    const threadPromises = mail.bulkSelected.map((id) =>
+      queryClient.fetchQuery({
+        queryKey: trpc.mail.get.queryKey({ id }),
+        queryFn: () => trpcClient.mail.get.query({ id }),
+        staleTime: 0,
+      }),
+    );
+
+    const threads = await Promise.all(threadPromises);
+
+    threads.forEach((thread) => {
+      if (thread?.hasUnread) {
+        unreadCount++;
+      } else {
+        readCount++;
+      }
+    });
+
+    return unreadCount >= readCount;
+  }, [mail.bulkSelected, queryClient, trpc.mail.get]);
+
+  const calculateStarState = useCallback(async () => {
+    const threadPromises = mail.bulkSelected.map((id) =>
+      queryClient.fetchQuery({
+        queryKey: trpc.mail.get.queryKey({ id }),
+        queryFn: () => trpcClient.mail.get.query({ id }),
+        staleTime: 0, // Force fresh data
+      }),
+    );
+
+    const threads = await Promise.all(threadPromises);
+
+    const anyStarred = threads.some((thread) =>
+      thread?.messages?.some((message) => message.tags?.some((tag) => tag.name === 'STARRED')),
+    );
+
+    return !anyStarred;
+  }, [mail.bulkSelected, queryClient, trpc.mail.get]);
 
   const handleMassUnsubscribe = async () => {
     setIsLoading(true);
@@ -687,16 +733,22 @@ function BulkSelectActions() {
     <div className="flex items-center gap-2">
       <button
         className="flex h-8 flex-1 items-center justify-center gap-1 overflow-hidden rounded-md border bg-white px-3 text-sm transition-all duration-300 ease-out hover:bg-gray-100 dark:border-none dark:bg-[#313131] dark:hover:bg-[#313131]/80"
-        onClick={() => {
+        onClick={async () => {
           if (mail.bulkSelected.length === 0) return;
-          optimisticMarkAsRead(mail.bulkSelected);
+          const shouldMarkAsRead = await calculateReadState();
+
+          if (shouldMarkAsRead) {
+            optimisticMarkAsRead(mail.bulkSelected);
+          } else {
+            optimisticMarkAsUnread(mail.bulkSelected);
+          }
         }}
       >
         <div className="relative overflow-visible">
           <Eye className="fill-[#9D9D9D] dark:fill-[#9D9D9D]" />
         </div>
         <div className="flex items-center justify-center gap-2.5">
-          <div className="justify-start leading-none">Mark all as read</div>
+          <div className="justify-start leading-none">Toggle read</div>
         </div>
       </button>
 
@@ -704,9 +756,11 @@ function BulkSelectActions() {
         <TooltipTrigger asChild>
           <button
             className="flex aspect-square h-8 items-center justify-center gap-1 overflow-hidden rounded-md border bg-white px-2 text-sm transition-all duration-300 ease-out hover:bg-gray-100 dark:border-none dark:bg-[#313131] dark:hover:bg-[#313131]/80"
-            onClick={() => {
+            onClick={async () => {
               if (mail.bulkSelected.length === 0) return;
-              optimisticToggleStar(mail.bulkSelected, true);
+              const shouldStar = await calculateStarState();
+
+              optimisticToggleStar(mail.bulkSelected, shouldStar);
             }}
           >
             <div className="relative overflow-visible">
