@@ -748,7 +748,7 @@ function BulkSelectActions() {
           <Eye className="fill-[#9D9D9D] dark:fill-[#9D9D9D]" />
         </div>
         <div className="flex items-center justify-center gap-2.5">
-          <div className="justify-start leading-none">Toggle read</div>
+          <div className="justify-start leading-none">{t('common.mail.toggleRead')}</div>
         </div>
       </button>
 
@@ -768,7 +768,7 @@ function BulkSelectActions() {
             </div>
           </button>
         </TooltipTrigger>
-        <TooltipContent>{t('common.mail.starAll')}</TooltipContent>
+        <TooltipContent>{t('common.mail.toggleStar')}</TooltipContent>
       </Tooltip>
 
       <Tooltip>
@@ -785,7 +785,7 @@ function BulkSelectActions() {
             </div>
           </button>
         </TooltipTrigger>
-        <TooltipContent>{t('common.mail.archive')}</TooltipContent>
+        <TooltipContent>{t('common.mail.archiveAll')}</TooltipContent>
       </Tooltip>
 
       <Dialog onOpenChange={setIsUnsub} open={isUnsub}>
@@ -826,23 +826,20 @@ function BulkSelectActions() {
           }}
         >
           <DialogHeader>
-            <DialogTitle>Mass Unsubscribe</DialogTitle>
-            <DialogDescription>
-              We will remove you from all of the mailing lists in the selected threads. If your
-              action is required to unsubscribe from certain threads, you will be notified.
-            </DialogDescription>
+            <DialogTitle>{t('common.mail.massUnsubscribe')}</DialogTitle>
+            <DialogDescription>{t('common.mail.massUnsubscribeDescription')}</DialogDescription>
           </DialogHeader>
 
           <DialogFooter>
             <Button variant="outline" className="mt-3 h-8" onClick={() => setIsUnsub(false)}>
-              <span>Cancel</span>{' '}
+              {t('common.mail.cancel')}
             </Button>
             <Button
               className="mt-3 h-8 [&_svg]:size-3.5"
               disabled={isLoading}
               onClick={handleMassUnsubscribe}
             >
-              <span>Unsubscribe</span>
+              {t('common.mail.unSubscribeFromAll')}
               <div className="flex h-5 items-center justify-center gap-1 rounded-sm bg-white/10 px-1 dark:bg-black/10">
                 <Command className="h-2 w-3 text-white dark:text-[#929292]" />
                 <CurvedArrow className="mt-1.5 h-5 w-3.5 fill-white dark:fill-[#929292]" />
@@ -866,7 +863,7 @@ function BulkSelectActions() {
             </div>
           </button>
         </TooltipTrigger>
-        <TooltipContent>{t('common.mail.moveToBin')}</TooltipContent>
+        <TooltipContent>{t('common.mail.moveAllToBin')}</TooltipContent>
       </Tooltip>
     </div>
   );

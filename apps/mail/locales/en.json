@@ -321,7 +321,14 @@
       "failedToMute": "Failed to mute",
       "failedToUnmute": "Failed to unmute",
       "archived": "Archived",
-      "failedToArchive": "Failed to archive"
+      "failedToArchive": "Failed to archive",
+      "toggleRead": "Toggle read",
+      "toggleStar": "Toggle star",
+      "moveAllToBin": "Move all to bin",
+      "archiveAll": "Archive all",
+      "cancel": "Cancel",
+      "massUnsubscribe": "Mass Unsubscribe",
+      "massUnsubscribeDescription": "We will remove you from all of the mailing lists in the selected threads. If your action is required to unsubscribe from certain threads, you will be notified."
     },
     "units": {
       "mb": "{amount} MB"
@@ -494,8 +501,6 @@
           "bulkSelect": "Bulk select",
           "bulkArchive": "Bulk archive",
           "bulkStar": "Bulk star"
-
-          
         }
       },
       "labels": {
