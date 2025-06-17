@@ -44,7 +44,24 @@ export class GoogleMailManager implements MailManager {
       'https://www.googleapis.com/auth/userinfo.email',
     ].join(' ');
   }
-  public getAttachment(messageId: string, attachmentId: string) {
+  public async listHistory<T>(historyId: string): Promise<{ history: T[]; historyId: string }> {
+    return this.withErrorHandler(
+      'listHistory',
+      async () => {
+        const response = await this.gmail.users.history.list({
+          userId: 'me',
+          startHistoryId: historyId,
+        });
+
+        const history = response.data.history || [];
+        const nextHistoryId = response.data.historyId || historyId;
+
+        return { history: history as T[], historyId: nextHistoryId };
+      },
+      { historyId },
+    );
+  }
+  public async getAttachment(messageId: string, attachmentId: string) {
     return this.withErrorHandler(
       'getAttachment',
       async () => {
@@ -352,6 +369,9 @@ export class GoogleMailManager implements MailManager {
                     attachmentId: attachmentId,
                     headers: part.headers || [],
                     body: attachmentData ?? '',
+                    replyTo: message.payload?.headers?.find(
+                      (h) => h.name?.toLowerCase() === 'reply-to',
+                    )?.value,
                   };
                 } catch {
                   return null;
@@ -585,6 +605,7 @@ export class GoogleMailManager implements MailManager {
         const requestBody = {
           message: {
             raw: encodedMessage,
+            threadId: data.threadId,
           },
         };
 
