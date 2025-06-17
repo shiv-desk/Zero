@@ -249,6 +249,24 @@ const ToolResponse = ({ toolName, result, args }: { toolName: string; result: an
   );
 };
 
+const isToolMentionActive = (editor: any) => {
+  const { state } = editor;
+  
+  return state.plugins.some((plugin: any) => {
+    const pluginState = plugin.getState(state);
+    
+    if (pluginState && typeof pluginState === 'object') {
+      const hasActive = 'active' in pluginState && pluginState.active;
+      const hasRange = 'range' in pluginState && pluginState.range;
+      const hasQuery = 'query' in pluginState && pluginState.query !== null;
+      
+      return hasActive || (hasRange && hasQuery);
+    }
+    
+    return false;
+  });
+};
+
 export function AIChat({
   messages,
   input,
@@ -276,23 +294,7 @@ export function AIChat({
     onLengthChange: () => setInput(editor.getText()),
     onKeydown(event) {
       if (event.key === 'Enter' && !event.metaKey && !event.shiftKey) {
-        const { state } = editor;
-        
-        const hasSuggestionActive = state.plugins.some(plugin => {
-          const pluginState = plugin.getState(state);
-          
-          if (pluginState && typeof pluginState === 'object') {
-            const hasActive = 'active' in pluginState && pluginState.active;
-            const hasRange = 'range' in pluginState && pluginState.range;
-            const hasQuery = 'query' in pluginState && pluginState.query !== null;
-            
-            return hasActive || (hasRange && hasQuery);
-          }
-          
-          return false;
-        });
-        
-        if (hasSuggestionActive) {
+        if (isToolMentionActive(editor)) {
           return;
         }
         
