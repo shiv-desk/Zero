@@ -10,7 +10,7 @@ export interface Tool {
   name: string;
   description: string;
   icon?: string;
-  logo?: string;
+  logoUrl?: string;
   execute: () => void | Promise<void>;
 }
 

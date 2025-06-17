@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
-import DOMPurify from 'dompurify';
 import { cn } from '../../lib/utils';
 
 export interface MentionListRef {
@@ -12,7 +11,7 @@ interface MentionListProps {
     name: string;
     description?: string;
     avatar?: string;
-    logo?: string;
+    logoUrl?: string;
   }>;
   command: (item: { id: string; name: string }) => void;
 }
@@ -82,10 +81,11 @@ export const MentionList = forwardRef<MentionListRef, MentionListProps>((props, 
           onClick={() => selectItem(index)}
         >
           <div className="flex h-6 w-6 items-center justify-center flex-shrink-0">
-            {item.logo ? (
-              <div 
-                className="w-4 h-4 text-muted-foreground" 
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.logo) }}
+            {item.logoUrl ? (
+              <img
+                src={item.logoUrl}
+                alt={item.name}
+                className="h-4 w-4 object-contain"
               />
             ) : item.avatar ? (
               <img

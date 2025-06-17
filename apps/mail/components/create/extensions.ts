@@ -149,7 +149,7 @@ const defaultTools: Tool[] = [
     id: 'zero', 
     name: 'Zero', 
     description: 'Zero AI',
-    logo: ``,
+    logoUrl: '',
     execute: async () => {
       console.log('Zero');
     }
