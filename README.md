@@ -265,6 +265,9 @@ If you'd like to help with translating Zero to other languages, check out our [t
   </a>
 </div>
 
+
+This is a shivam-bhandari clone
+
 ## 🤍 The team
 
 Curious who makes Zero? Here are our [contributors and maintainers](https://0.email/contributors)
